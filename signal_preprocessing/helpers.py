@@ -1,6 +1,8 @@
 # Importing libraries:
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 # signal processing libraries:
 import librosa
@@ -18,7 +20,7 @@ warnings.filterwarnings('ignore')
 
 
 # 1. VISUALIZATION FUNCTIONS:
-# Function to display the audio file based on its index:
+# Function to display the audio file based on audio_path and audio_index:
 def display_audio(file_path, audio_index):
     return ipd.Audio(file_path[audio_index])
 
@@ -44,6 +46,19 @@ def signal_time_domain(file_path, audio_index, sr='', zoom_1='', zoom_2=''):
         librosa.display.waveshow(signal, sr=sampling_rate, alpha=0.6)
         plt.title(f'Complete Row Audio Signal')
     plt.ylim((-0.3, 0.3))
+    return plt.show()
+
+
+# Visualize a signal in Time-Domain based on Pandas DataFrame:
+def visualize_signal(signals, index, sr, zoom_1='', zoom_2=''):
+    zoom_1 = 1 if zoom_1 == 0 else zoom_1
+    plt.figure(figsize=(15, 5))
+    if zoom_1 and zoom_2:
+        librosa.display.waveshow(np.array(signals.iloc[index, zoom_1*sr:zoom_2*sr]), sr=sr, alpha=0.6)
+        plt.title(f'Zoomed Row Audio Signal ({zoom_1} sec - {zoom_2} sec)')
+    else:
+        librosa.display.waveshow(np.array(signals.iloc[index, :-1]), sr=sr, alpha=0.6)
+        plt.title(f'Complete Row Audio Signal')
     return plt.show()
 
 
@@ -353,3 +368,36 @@ def emd_wl_dfilter(file_path, audio_index, order, low_fc='', high_fc='', sr='', 
         return plt.show()
     else:
         return np.array(signal), np.array(emd_wl_dfilter_signal)
+
+
+# 3. Segmentation:
+# Function for slicing the signal:
+# The 'signals' Argument is a Pandas DataFrame
+def slice_signals(signals, period, sr, save=False, csv_version=int):
+    sliced_signals = []
+    for i in range(len(signals)):  # iterating over all the rows in the DataFrame
+        start = 0
+        end = sr * period
+        for j in range(8):  # The number of slices in each row
+            signal = pd.DataFrame(signals.iloc[i, start:end]).T
+            signal['class'] = signals.iloc[i, -1]
+            sliced_signals.append(np.array(signal))
+            start += sr * period
+            end += sr * period
+
+    sliced_signals = [item for elem in sliced_signals for item in elem]
+
+    # converting a list to DataFrame and dropping any row that contains NaN:
+    sliced_signals = pd.DataFrame(sliced_signals).dropna()
+    sliced_signals.reset_index(drop=True, inplace=True)
+    sliced_signals = sliced_signals.rename(columns={sr*period: 'class'})
+
+    # saving the DataFrame into the directory as csv file:
+    if save:
+        while os.path.isfile(f'filtered_signals/filtered_signals_v{csv_version}.csv'):
+            csv_version += 1
+            continue
+        else:
+            sliced_signals.to_csv(f'filtered_signals/filtered_signals_v{csv_version}.csv', index=False)
+
+    return sliced_signals
