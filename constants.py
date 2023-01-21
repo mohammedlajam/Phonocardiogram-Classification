@@ -1,4 +1,4 @@
-# This file contains all the variables, which will be used in this repository:
+# This file contains all the variables, which is used in this repository:
 
 # 1. Signal-preprocessing variables:
 SAMPLING_RATE = 1000
@@ -13,3 +13,5 @@ PERIOD = 5
 FRAME_SIZE = 512
 HOP_SIZE = 64
 SPLIT_FREQUENCY = 256
+N_MELS = 128
+N_MFCCS = 13

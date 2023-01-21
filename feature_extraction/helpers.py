@@ -14,6 +14,7 @@ warnings.filterwarnings('ignore')
 # 1. Time-Domain Features:
 # 1.1. Amplitude Envelope:
 def amplitude_envelope(signal, frame_size, hop_size, plot=bool, des_stats=bool):
+    signal = np.array(signal)
     ae = np.array([max(signal[i: i + frame_size]) for i in range(0, len(signal), hop_size)])
 
     # plotting the amplitude envelope:
@@ -43,6 +44,7 @@ def amplitude_envelope(signal, frame_size, hop_size, plot=bool, des_stats=bool):
 
 # 1.2. Root Mean Square Energy:
 def root_mean_square(signal, frame_size, hop_size, plot=bool, des_stats=bool):
+    signal = np.array(signal)
     rms = librosa.feature.rms(signal, frame_length=frame_size, hop_length=hop_size)[0]
 
     # plotting the rms:
@@ -220,6 +222,7 @@ def spectral_bandwidth(signal, sr, frame_size, hop_size, plot=bool, des_stats=bo
 
 # 2.3. Function to extract the amplitude and the frequency of the peak value:
 def peak_frequency(signal, sr, plot=False):
+    signal = np.array(signal)
     ft = scipy.fft.fft(signal)
     magnitude = np.absolute(ft)
     frequency = np.linspace(0, sr, len(magnitude))
@@ -244,6 +247,7 @@ def peak_frequency(signal, sr, plot=False):
 # 3. Time-Frequency representation Features:
 # 3.1. Function to extract the Spectrogram:
 def spectrogram(signal, sr, frame_size, hop_size):  # frame=512, hop=64
+    signal = np.array(signal)
     signal_stft = librosa.stft(signal, n_fft=frame_size, hop_length=hop_size)
     signal_stft_log = librosa.power_to_db(np.abs(signal_stft) ** 2)
 
@@ -257,6 +261,7 @@ def spectrogram(signal, sr, frame_size, hop_size):  # frame=512, hop=64
 
 # 3.2. Function to extract the Mel Spectrogram:
 def mel_spectrogram(signal, sr, frame_size, hop_size, n_mels):
+    signal = np.array(signal)
     signal_mel = librosa.feature.melspectrogram(signal, sr=sr, n_fft=frame_size, hop_length=hop_size,
                                                 n_mels=n_mels)
     signal_mel_log = librosa.power_to_db(signal_mel)
@@ -270,30 +275,39 @@ def mel_spectrogram(signal, sr, frame_size, hop_size, n_mels):
 
 
 # 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
-def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, plot=bool, mfcc_type=''):
+def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=bool, des_stats=bool):
+    signal = np.array(signal)
     mfccs = librosa.feature.mfcc(signal, n_mfcc=n_mfcc, sr=sr)
-    delta_mfccs = librosa.feature.delta(mfccs)
-    delta2_mfccs = librosa.feature.delta(mfccs, order=2)
 
-    maximum = np.max(mfccs)
-    minimum = np.min(mfccs)
-    mean = np.mean(mfccs)
-    median = np.median(mfccs)
-    std = np.std(mfccs)
-
-    # Plotting the mfccs, delta_1 and delta_2:
-    if plot:
-        plt.figure(figsize=(15, 5))
-        if mfcc_type == 'mfccs':
+    if mfcc_type == 'mfccs':
+        if plot:
+            plt.figure(figsize=(15, 5))
             librosa.display.specshow(mfccs, x_axis='time', sr=sr)
             plt.title('Mel-Frequency Cepstral Coefficients')
-        if mfcc_type == 'delta_1':
-            librosa.display.specshow(delta_mfccs, x_axis='time', sr=sr)
-            plt.title('Delta_1 MFCCs')
-        if mfcc_type == 'delta_2':
-            librosa.display.specshow(delta2_mfccs, x_axis='time', sr=sr)
-            plt.title('Delta_2 MFCCs')
-        plt.colorbar(format='%+2f')
-        return plt.show()
-    else:
-        return maximum, minimum, mean, median, std
+            return plt.show()
+        elif des_stats:
+            return np.max(mfccs), np.min(mfccs), np.mean(mfccs), np.median(mfccs), np.std(mfccs)
+        else:
+            return mfccs
+    elif mfcc_type == 'delta_1':
+        delta_1 = librosa.feature.delta(mfccs)
+        if plot:
+            plt.figure(figsize=(15, 5))
+            librosa.display.specshow(delta_1, x_axis='time', sr=sr)
+            plt.title('MFCCs - Delta_1')
+            return plt.show()
+        elif des_stats:
+            return np.max(delta_1), np.min(delta_1), np.mean(delta_1), np.median(delta_1), np.std(delta_1)
+        else:
+            return delta_1
+    elif mfcc_type == 'MFCCs - delta_2':
+        delta_2 = librosa.feature.delta(mfccs, order=2)
+        if plot:
+            plt.figure(figsize=(15, 5))
+            librosa.display.specshow(delta_2, x_axis='time', sr=sr)
+            plt.title('Mel-Frequency Cepstral Coefficients')
+            return plt.show()
+        elif des_stats:
+            return np.max(delta_2), np.min(delta_2), np.mean(delta_2), np.median(delta_2), np.std(delta_2)
+        else:
+            return delta_2
