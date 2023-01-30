@@ -31,6 +31,7 @@ def signal_extraction(file_path, audio_index, sr=''):
     print(f'Signal: {signal[:10]}')
     print(f'Signal Shape: {signal.shape}')
     print(f'Sample Rate: {sr}')
+    return signal
 
 
 # Function to visualize the signal in Time-Domain:

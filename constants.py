@@ -1,17 +1,20 @@
 # This file contains all the variables, which is used in this repository:
+# 1. Paths:
+IMG_DIR = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/extracted_images'
 
-# 1. Signal-preprocessing variables:
+# 2. Signal-preprocessing variables:
 SAMPLING_RATE = 1000
 LOW_FC = 100
 HIGH_FC = 10
 FILTER_ORDER = 8
 
-# 2. Signal Segmentation variables:
+# 3. Signal Segmentation variables:
 PERIOD = 5
 
-# 3. Feature Extraction variables:
+# 4. Feature Extraction variables:
 FRAME_SIZE = 512
 HOP_SIZE = 64
 SPLIT_FREQUENCY = 256
 N_MELS = 128
 N_MFCCS = 13
+N_SCALES = 30

@@ -1,11 +1,13 @@
 # Importing libraries:
 import numpy as np
 import matplotlib.pyplot as plt
+import constants as c
 
 # feature extraction libraries:
 import librosa
 import librosa.display
 import scipy.signal
+import pywt
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -13,7 +15,7 @@ warnings.filterwarnings('ignore')
 
 # 1. Time-Domain Features:
 # 1.1. Amplitude Envelope:
-def amplitude_envelope(signal, frame_size, hop_size, plot=bool, des_stats=bool):
+def amplitude_envelope(signal, frame_size, hop_size, plot=False, des_stats=bool):
     signal = np.array(signal)
     ae = np.array([max(signal[i: i + frame_size]) for i in range(0, len(signal), hop_size)])
 
@@ -43,7 +45,7 @@ def amplitude_envelope(signal, frame_size, hop_size, plot=bool, des_stats=bool):
 
 
 # 1.2. Root Mean Square Energy:
-def root_mean_square(signal, frame_size, hop_size, plot=bool, des_stats=bool):
+def root_mean_square(signal, frame_size, hop_size, plot=False, des_stats=bool):
     signal = np.array(signal)
     rms = librosa.feature.rms(signal, frame_length=frame_size, hop_length=hop_size)[0]
 
@@ -72,7 +74,7 @@ def root_mean_square(signal, frame_size, hop_size, plot=bool, des_stats=bool):
 
 
 # 1.3. Zero-Crossing Rate:
-def zero_crossing_rate(signal, frames=bool, frame_size='', hop_size='', plot=bool, des_stats=bool):
+def zero_crossing_rate(signal, frames=bool, frame_size='', hop_size='', plot=False, des_stats=bool):
     # retrieve the Zero-Crossing Rate for each frame by using frame_size and hop_size:
     signal = np.array(signal)
     if frames:
@@ -126,7 +128,7 @@ def energy_power(signal):
 
 # 2. Frequency-Domain Features:
 # 2.1. Function to extract the Band Energy Ratio:
-def band_energy_ratio(signal, frame_size, hop_size, split_frequency, sr, plot=bool, des_stats=bool):
+def band_energy_ratio(signal, frame_size, hop_size, split_frequency, sr, plot=False, des_stats=bool):
     # calculating the spectrogram:
     signal = np.array(signal)
     spec = librosa.stft(signal, n_fft=frame_size, hop_length=hop_size)
@@ -169,7 +171,7 @@ def band_energy_ratio(signal, frame_size, hop_size, split_frequency, sr, plot=bo
 
 
 # 2.2. Function to extract the Spectral Centroid:
-def spectral_centroid(signal, sr, frame_size, hop_size, plot=bool, des_stats=bool):
+def spectral_centroid(signal, sr, frame_size, hop_size, plot=False, des_stats=bool):
     signal = np.array(signal)
     sc = librosa.feature.spectral_centroid(y=signal, sr=sr, n_fft=frame_size, hop_length=hop_size)[0]
 
@@ -195,7 +197,7 @@ def spectral_centroid(signal, sr, frame_size, hop_size, plot=bool, des_stats=boo
 
 
 # 2.3. Function to extract the Spectral Bandwidth:
-def spectral_bandwidth(signal, sr, frame_size, hop_size, plot=bool, des_stats=bool):
+def spectral_bandwidth(signal, sr, frame_size, hop_size, plot=False, des_stats=bool):
     signal = np.array(signal)
     sb = librosa.feature.spectral_bandwidth(y=signal, sr=sr, n_fft=frame_size, hop_length=hop_size)[0]
 
@@ -246,36 +248,54 @@ def peak_frequency(signal, sr, plot=False):
 
 # 3. Time-Frequency representation Features:
 # 3.1. Function to extract the Spectrogram:
-def spectrogram(signal, sr, frame_size, hop_size):  # frame=512, hop=64
+def spectrogram(signal, sr, frame_size, hop_size, plot=False, save=False, img_ref=''):  # frame=512, hop=64
     signal = np.array(signal)
     signal_stft = librosa.stft(signal, n_fft=frame_size, hop_length=hop_size)
     signal_stft_log = librosa.power_to_db(np.abs(signal_stft) ** 2)
 
     # plotting the spectrogram:
-    plt.figure(figsize=(15, 5))
-    librosa.display.specshow(signal_stft_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='log')
-    plt.title('Spectrogram')
-    plt.colorbar(format='%+2.f')
-    return plt.show()
+    if plot:
+        plt.figure(figsize=(15, 5))
+        librosa.display.specshow(signal_stft_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='log')
+        plt.colorbar(format='%+2.f')
+        plt.title('Spectrogram')
+        return plt.show()
+    elif save:
+        figure = plt.figure(figsize=(15, 5))
+        ax = plt.axes()
+        ax.set_axis_off()
+        librosa.display.specshow(signal_stft_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='log')
+        plt.savefig(f'{c.IMG_DIR}/spectrogram/{img_ref}.png')
+        return plt.close(figure)
 
 
 # 3.2. Function to extract the Mel Spectrogram:
-def mel_spectrogram(signal, sr, frame_size, hop_size, n_mels):
+def mel_spectrogram(signal, sr, frame_size, hop_size, n_mels, plot=False, save=False, img_ref=''):
     signal = np.array(signal)
     signal_mel = librosa.feature.melspectrogram(signal, sr=sr, n_fft=frame_size, hop_length=hop_size,
                                                 n_mels=n_mels)
     signal_mel_log = librosa.power_to_db(signal_mel)
 
     # plotting the Mel Spectrogram:
-    plt.figure(figsize=(15, 5))
-    librosa.display.specshow(signal_mel_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='mel')
-    plt.title('Mel Spectrogram')
-    plt.colorbar(format='%+2.f')
-    return plt.show()
+    if plot:
+        plt.figure(figsize=(15, 5))
+        librosa.display.specshow(signal_mel_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='mel')
+        plt.title('Mel Spectrogram')
+        plt.colorbar(format='%+2.f')
+        return plt.show()
+    elif save:
+        figure = plt.figure(figsize=(15, 5))
+        ax = plt.axes()
+        ax.set_axis_off()
+        librosa.display.specshow(signal_mel_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='mel')
+        plt.savefig(f'{c.IMG_DIR}/mel_spectrogram/{img_ref}.png')
+        return plt.close(figure)
 
 
 # 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
-def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=bool, des_stats=bool):
+# 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
+def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=False,
+                                         save=False, img_ref='', des_stats=False):
     signal = np.array(signal)
     mfccs = librosa.feature.mfcc(signal, n_mfcc=n_mfcc, sr=sr)
 
@@ -285,6 +305,13 @@ def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=bool
             librosa.display.specshow(mfccs, x_axis='time', sr=sr)
             plt.title('Mel-Frequency Cepstral Coefficients')
             return plt.show()
+        elif save:
+            figure = plt.figure(figsize=(15, 5))
+            ax = plt.axes()
+            ax.set_axis_off()
+            librosa.display.specshow(mfccs, x_axis='time', sr=sr)
+            plt.savefig(f'{c.IMG_DIR}/mfccs/mfcc/{img_ref}.png')
+            return plt.close(figure)
         elif des_stats:
             return np.max(mfccs), np.min(mfccs), np.mean(mfccs), np.median(mfccs), np.std(mfccs)
         else:
@@ -296,18 +323,93 @@ def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=bool
             librosa.display.specshow(delta_1, x_axis='time', sr=sr)
             plt.title('MFCCs - Delta_1')
             return plt.show()
+        elif save:
+            figure = plt.figure(figsize=(15, 5))
+            ax = plt.axes()
+            ax.set_axis_off()
+            librosa.display.specshow(delta_1, x_axis='time', sr=sr)
+            plt.savefig(f'{c.IMG_DIR}/mfccs/delta_1/{img_ref}.png')
+            return plt.close(figure)
         elif des_stats:
             return np.max(delta_1), np.min(delta_1), np.mean(delta_1), np.median(delta_1), np.std(delta_1)
         else:
             return delta_1
-    elif mfcc_type == 'MFCCs - delta_2':
+    elif mfcc_type == 'delta_2':
         delta_2 = librosa.feature.delta(mfccs, order=2)
         if plot:
             plt.figure(figsize=(15, 5))
             librosa.display.specshow(delta_2, x_axis='time', sr=sr)
-            plt.title('Mel-Frequency Cepstral Coefficients')
+            plt.title('MFCCs - Delta_2')
             return plt.show()
+        elif save:
+            figure = plt.figure(figsize=(15, 5))
+            ax = plt.axes()
+            ax.set_axis_off()
+            librosa.display.specshow(delta_2, x_axis='time', sr=sr)
+            plt.savefig(f'{c.IMG_DIR}/mfccs/delta_2/{img_ref}.png')
+            return plt.close(figure)
         elif des_stats:
             return np.max(delta_2), np.min(delta_2), np.mean(delta_2), np.median(delta_2), np.std(delta_2)
         else:
             return delta_2
+
+
+# 3.4. Function to extract Continuous Wavelet Transform (CWT):
+def cwt_scalogram(signal, num_scales, wavelet_family, plot=False, save=False, img_ref=''):
+    scales_range = np.arange(1, num_scales)
+    coefficients, frequencies = pywt.cwt(data=signal, scales=scales_range, wavelet=wavelet_family)
+
+    # plotting the Scalogram:
+    if plot:
+        plt.figure(figsize=(15, 5))
+        plt.imshow(abs(coefficients), extent=[0, 200, 30, 1], interpolation='bilinear',
+                   cmap='bone', aspect='auto', vmax=abs(coefficients).max(),
+                   vmin=-abs(coefficients).max())
+        plt.gca().invert_yaxis()
+        plt.yticks(np.arange(1, 31, 1))
+        plt.xticks(np.arange(0, 201, 10))
+
+        # plotting the Signal:
+        plt.figure(figsize=(15, 5))
+        plt.plot(signal)
+        plt.grid(color='gray', linestyle=':', linewidth=0.5)
+        return plt.show()
+
+    # saving the scalogram in the defined path:
+    elif save:
+        figure = plt.figure(figsize=(15, 5))
+        ax = plt.axes()
+        ax.set_axis_off()
+        plt.imshow(abs(coefficients), extent=[0, 200, 30, 1], interpolation='bilinear',
+                   cmap='bone', aspect='auto', vmax=abs(coefficients).max(),
+                   vmin=-abs(coefficients).max())
+        plt.gca().invert_yaxis()
+        plt.savefig(f'{c.IMG_DIR}/Scalogram/{img_ref}.png')
+        plt.close(figure)
+
+    else:
+        return coefficients, frequencies
+
+
+# 3.5. Function to extract Discrete Wavelet Transform (DWT):
+def dwt_coefficients(signal, dwt_levels=bool, plot=False):
+    if dwt_levels:
+        coefficients = pywt.wavedec(data=signal, wavelet='bior3.1', level=5, mode='periodic')
+        ca5, cd5, cd4, cd3, cd2, cd1 = coefficients
+        if plot:
+            signals = [signal, cd1, cd2, cd3, cd4, cd5]
+            plot_titles = ['Original Signal', 'cD1', 'cD2', 'cD3', 'cD4', 'cD5']
+            plt.figure(figsize=(15, 10))
+            for i in range(len(signals)):
+                plt.subplot(6, 1, i+1)
+                plt.plot(signals[i])
+                plt.title(plot_titles[i])
+                plt.xlabel('Time')
+                plt.ylabel('Amplitude')
+                plt.tight_layout(pad=2.0)
+            return plt.show()
+        else:
+            return ca5, cd5, cd4, cd3, cd2, cd1
+    else:
+        ca, cd = pywt.dwt(data=signal, wavelet='coif1')
+        return ca, cd
