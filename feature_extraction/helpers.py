@@ -7,6 +7,7 @@ import constants as c
 import librosa
 import librosa.display
 import scipy.signal
+from scipy.signal import find_peaks
 import pywt
 
 import warnings
@@ -124,6 +125,25 @@ def energy_power(signal):
     energy = np.sum((abs(signal))**2)
     total_power = energy / time_interval
     return energy, total_power
+
+
+# 1.5. Function to segment t1 and t2:
+# Method 2:
+def peak_detection(signal, plot=bool):
+    threshold_height = np.max(signal) * 0.3
+    signal = np.array(signal)
+    # finding the peak of the signal S1:
+    s1, properties = scipy.signal.find_peaks(x=signal, height=threshold_height, distance=400)
+
+    # plotting the detected peaks on the signal:
+    if plot:
+        plt.figure(figsize=(15, 5))
+        plt.plot(signal)
+        plt.plot(s1, signal[s1], "o")
+        plt.plot(np.zeros_like(signal), "--", color="gray")
+        return plt.show()
+    else:
+        return s1, properties
 
 
 # 2. Frequency-Domain Features:
@@ -295,7 +315,7 @@ def mel_spectrogram(signal, sr, frame_size, hop_size, n_mels, plot=False, save=F
 # 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
 # 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
 def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=False,
-                                         save=False, img_ref='', des_stats=False):
+                                        save=False, img_ref='', des_stats=False):
     signal = np.array(signal)
     mfccs = librosa.feature.mfcc(signal, n_mfcc=n_mfcc, sr=sr)
 
@@ -372,10 +392,9 @@ def cwt_scalogram(signal, num_scales, wavelet_family, plot=False, save=False, im
         # plotting the Signal:
         plt.figure(figsize=(15, 5))
         plt.plot(signal)
-        plt.grid(color='gray', linestyle=':', linewidth=0.5)
         return plt.show()
 
-    # saving the scalogram in the defined path:
+    # saving the Scalogram in the defined path:
     elif save:
         figure = plt.figure(figsize=(15, 5))
         ax = plt.axes()
@@ -392,10 +411,11 @@ def cwt_scalogram(signal, num_scales, wavelet_family, plot=False, save=False, im
 
 
 # 3.5. Function to extract Discrete Wavelet Transform (DWT):
-def dwt_coefficients(signal, dwt_levels=bool, plot=False):
+def dwt_coefficients(signal, dwt_levels=False, plot=False, des_stats=False):
     if dwt_levels:
         coefficients = pywt.wavedec(data=signal, wavelet='bior3.1', level=5, mode='periodic')
         ca5, cd5, cd4, cd3, cd2, cd1 = coefficients
+        # plotting the coefficients of the 5 levels:
         if plot:
             signals = [signal, cd1, cd2, cd3, cd4, cd5]
             plot_titles = ['Original Signal', 'cD1', 'cD2', 'cD3', 'cD4', 'cD5']
@@ -412,4 +432,17 @@ def dwt_coefficients(signal, dwt_levels=bool, plot=False):
             return ca5, cd5, cd4, cd3, cd2, cd1
     else:
         ca, cd = pywt.dwt(data=signal, wavelet='coif1')
-        return ca, cd
+        if des_stats:
+            ca_max = np.max(ca)
+            ca_min = np.min(ca)
+            ca_mean = np.mean(ca)
+            ca_median = np.median(ca)
+            ca_std = np.std(cd)
+            cd_max = np.max(cd)
+            cd_min = np.min(cd)
+            cd_mean = np.mean(cd)
+            cd_median = np.median(cd)
+            cd_std = np.std(cd)
+            return ca_max, ca_min, ca_mean, ca_median, ca_std, cd_max, cd_min, cd_mean, cd_median, cd_std
+        else:
+            return ca, cd
