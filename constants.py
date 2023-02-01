@@ -1,6 +1,8 @@
 # This file contains all the variables, which is used in this repository:
 # 1. Paths:
-IMG_DIR = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/extracted_images'
+DATASET_PATH = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/'
+SIG_PRE_PATH = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/biosignal_processing/signal_preprocessing'
+FEATURE_EXTRACTION_PATH = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/biosignal_processing/feature_extraction'
 
 # 2. Signal-preprocessing variables:
 SAMPLING_RATE = 1000
