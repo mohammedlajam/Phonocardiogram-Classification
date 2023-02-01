@@ -285,7 +285,7 @@ def spectrogram(signal, sr, frame_size, hop_size, plot=False, save=False, img_re
         ax = plt.axes()
         ax.set_axis_off()
         librosa.display.specshow(signal_stft_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='log')
-        plt.savefig(f'{c.IMG_DIR}/spectrogram/{img_ref}.png')
+        plt.savefig(f'{c.FEATURE_EXTRACTION_PATH}/images/spectrogram/{img_ref}.png')
         return plt.close(figure)
 
 
@@ -308,11 +308,10 @@ def mel_spectrogram(signal, sr, frame_size, hop_size, n_mels, plot=False, save=F
         ax = plt.axes()
         ax.set_axis_off()
         librosa.display.specshow(signal_mel_log, sr=sr, hop_length=hop_size, x_axis='time', y_axis='mel')
-        plt.savefig(f'{c.IMG_DIR}/mel_spectrogram/{img_ref}.png')
+        plt.savefig(f'{c.FEATURE_EXTRACTION_PATH}/images/mel_spectrogram/{img_ref}.png')
         return plt.close(figure)
 
 
-# 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
 # 3.3. Function to extract Mel Frequency Cepstral Coefficients (MFCCs):
 def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=False,
                                         save=False, img_ref='', des_stats=False):
@@ -330,7 +329,7 @@ def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=Fals
             ax = plt.axes()
             ax.set_axis_off()
             librosa.display.specshow(mfccs, x_axis='time', sr=sr)
-            plt.savefig(f'{c.IMG_DIR}/mfccs/mfcc/{img_ref}.png')
+            plt.savefig(f'{c.FEATURE_EXTRACTION_PATH}/images/mfccs/mfcc/{img_ref}.png')
             return plt.close(figure)
         elif des_stats:
             return np.max(mfccs), np.min(mfccs), np.mean(mfccs), np.median(mfccs), np.std(mfccs)
@@ -348,7 +347,7 @@ def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=Fals
             ax = plt.axes()
             ax.set_axis_off()
             librosa.display.specshow(delta_1, x_axis='time', sr=sr)
-            plt.savefig(f'{c.IMG_DIR}/mfccs/delta_1/{img_ref}.png')
+            plt.savefig(f'{c.FEATURE_EXTRACTION_PATH}/images/mfccs/delta_1/{img_ref}.png')
             return plt.close(figure)
         elif des_stats:
             return np.max(delta_1), np.min(delta_1), np.mean(delta_1), np.median(delta_1), np.std(delta_1)
@@ -366,7 +365,7 @@ def mel_frequency_cepstral_coefficients(signal, sr, n_mfcc, mfcc_type, plot=Fals
             ax = plt.axes()
             ax.set_axis_off()
             librosa.display.specshow(delta_2, x_axis='time', sr=sr)
-            plt.savefig(f'{c.IMG_DIR}/mfccs/delta_2/{img_ref}.png')
+            plt.savefig(f'{c.FEATURE_EXTRACTION_PATH}/images/mfccs/delta_2/{img_ref}.png')
             return plt.close(figure)
         elif des_stats:
             return np.max(delta_2), np.min(delta_2), np.mean(delta_2), np.median(delta_2), np.std(delta_2)
@@ -388,10 +387,6 @@ def cwt_scalogram(signal, num_scales, wavelet_family, plot=False, save=False, im
         plt.gca().invert_yaxis()
         plt.yticks(np.arange(1, 31, 1))
         plt.xticks(np.arange(0, 201, 10))
-
-        # plotting the Signal:
-        plt.figure(figsize=(15, 5))
-        plt.plot(signal)
         return plt.show()
 
     # saving the Scalogram in the defined path:
@@ -403,7 +398,7 @@ def cwt_scalogram(signal, num_scales, wavelet_family, plot=False, save=False, im
                    cmap='bone', aspect='auto', vmax=abs(coefficients).max(),
                    vmin=-abs(coefficients).max())
         plt.gca().invert_yaxis()
-        plt.savefig(f'{c.IMG_DIR}/Scalogram/{img_ref}.png')
+        plt.savefig(f'{c.FEATURE_EXTRACTION_PATH}/images/Scalogram/{img_ref}.png')
         plt.close(figure)
 
     else:
