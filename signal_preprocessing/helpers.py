@@ -14,6 +14,7 @@ from PyEMD import EMD
 from skimage.restoration import denoise_wavelet
 from scipy.signal import filtfilt
 import scipy
+import constants as c
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -371,10 +372,12 @@ def emd_wl_dfilter(file_path, audio_index, order, low_fc='', high_fc='', sr='', 
         return np.array(signal), np.array(emd_wl_dfilter_signal)
 
 
-# 3. Segmentation:
+# 3. Slicing:
 # Function for slicing the signal:
 # The 'signals' Argument is a Pandas DataFrame
-def slice_signals(signals, period, sr, save=False, csv_version=int):
+# denoise method is either one of the following:
+# emd, wavelet_transform, digital_filters, emd_dfilters, emd_wl_dfilters
+def slice_signals(signals, period, sr, save=False, csv_version=int, denoise_method=''):
     sliced_signals = []
     for i in range(len(signals)):  # iterating over all the rows in the DataFrame
         start = 0
@@ -393,12 +396,11 @@ def slice_signals(signals, period, sr, save=False, csv_version=int):
     sliced_signals.reset_index(drop=True, inplace=True)
     sliced_signals = sliced_signals.rename(columns={sr*period: 'class'})
 
-    # saving the DataFrame into the directory as csv file:
+    # saving the DataFrame into the path of local machine as csv file:
     if save:
-        while os.path.isfile(f'filtered_signals/filtered_signals_v{csv_version}.csv'):
+        while os.path.isfile(f'{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv'):
             csv_version += 1
             continue
         else:
-            sliced_signals.to_csv(f'filtered_signals/filtered_signals_v{csv_version}.csv', index=False)
-
+            sliced_signals.to_csv(f'{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv', index=False)
     return sliced_signals
