@@ -64,3 +64,5 @@ SLICED_SIGNALS = slice_signals(signals=FILTERED_SIGNALS,
                                save=True,
                                csv_version=1,
                                denoise_method='digital_filters')
+
+#test
