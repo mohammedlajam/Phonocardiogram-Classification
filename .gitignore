@@ -1,0 +1,7 @@
+.idea
+.DS_Store
+.ipynb_checkpoints
+feature_extraction/.ipynb_checkpoints
+feature_extraction/.DS_Store
+signal_preprocessing/.ipynb_checkpoints
+signal_preprocessing/.DS_Store
