@@ -87,7 +87,7 @@ def spectrum(file_path, audio_index, sr='', f_ratio=0.5, zoom_1='', zoom_2=''):
 
 # 2. SIGNAL PROCESSING FUNCTIONS:
 # Function to extract IMFs using Empirical Mode Decomposition (EMD):
-def empirical_mode_decomposition(file_path, audio_index, sr='', plot=bool, zoom_1='', zoom_2=''):
+def empirical_mode_decomposition(file_path, audio_index, sr, plot=False, zoom_1='', zoom_2=''):
     signal, sampling_rate = librosa.load(file_path[audio_index], sr=sr)
     emd = EMD()
     imfs = emd(signal)
@@ -114,8 +114,7 @@ def empirical_mode_decomposition(file_path, audio_index, sr='', plot=bool, zoom_
 
 
 # Function for Wavelet-Denoising:
-def wavelet_denoising(file_path, audio_index, sr='', plot=bool, zoom_1='', zoom_2=''):
-    global signal, wl_signal, sampling_rate
+def wavelet_denoising(file_path, audio_index, sr, plot=False, zoom_1='', zoom_2=''):
     signal, sampling_rate = librosa.load(file_path[audio_index], sr=sr)
     wl_signal = denoise_wavelet(signal, method='BayesShrink', mode='soft', wavelet_levels=5,
                                 wavelet='sym8', rescale_sigma=True)
@@ -148,7 +147,7 @@ def wavelet_denoising(file_path, audio_index, sr='', plot=bool, zoom_1='', zoom_
 
 
 # Function for Digital Filter - Butterworth:
-def digital_filter(file_path, audio_index, order, low_fc='', high_fc='', sr='', plot=bool,
+def digital_filter(file_path, audio_index, sr, order, low_fc='', high_fc='', plot=False,
                    zoom_1='', zoom_2='', f_ratio=0.5):
     signal, sampling_rate = librosa.load(file_path[audio_index], sr=sr)
 
@@ -225,7 +224,7 @@ def digital_filter(file_path, audio_index, order, low_fc='', high_fc='', sr='', 
 
 # Combination of Signal Processing methods:
 # Function for EMD + Wavelet-Denoising:
-def emd_wavelet(file_path, audio_index, sr='', plot=bool, zoom_1='', zoom_2=''):
+def emd_wavelet(file_path, audio_index, sr, plot=False, zoom_1='', zoom_2=''):
     signal, sampling_rate = librosa.load(file_path[audio_index], sr=sr)
     # Applying EMD method on the original signal
     emd = EMD()
@@ -262,7 +261,7 @@ def emd_wavelet(file_path, audio_index, sr='', plot=bool, zoom_1='', zoom_2=''):
 
 
 # Function for EMD + Digital-Filter:
-def emd_dfilter(file_path, audio_index, order, low_fc='', high_fc='', sr='', plot=bool, zoom_1='',
+def emd_dfilter(file_path, audio_index, sr, order, low_fc='', high_fc='', plot=False, zoom_1='',
                 zoom_2=''):
     signal, sampling_rate = librosa.load(file_path[audio_index], sr=sr)
     # Applying EMD method on the original signal
@@ -315,7 +314,7 @@ def emd_dfilter(file_path, audio_index, order, low_fc='', high_fc='', sr='', plo
 
 
 # Function for EMD + Wavelet-Denoising + Digital-Filter
-def emd_wl_dfilter(file_path, audio_index, order, low_fc='', high_fc='', sr='', plot=bool, zoom_1='',
+def emd_wl_dfilter(file_path, audio_index, sr, order, low_fc='', high_fc='', plot=False, zoom_1='',
                    zoom_2=''):
     signal, sampling_rate = librosa.load(file_path[audio_index], sr=sr)
 
@@ -376,7 +375,7 @@ def emd_wl_dfilter(file_path, audio_index, order, low_fc='', high_fc='', sr='', 
 # Function for slicing the signal:
 # The 'signals' Argument is a Pandas DataFrame
 # denoise method is either one of the following:
-# emd, wavelet_transform, digital_filters, emd_dfilters, emd_wl_dfilters
+# emd, wavelet_transform, digital_filters, emd_wavelet, emd_dfilters, emd_wl_dfilters
 def slice_signals(signals, period, sr, save=False, csv_version=int, denoise_method=''):
     sliced_signals = []
     for i in range(len(signals)):  # iterating over all the rows in the DataFrame
@@ -398,9 +397,19 @@ def slice_signals(signals, period, sr, save=False, csv_version=int, denoise_meth
 
     # saving the DataFrame into the path of local machine as csv file:
     if save:
-        while os.path.isfile(f'{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv'):
-            csv_version += 1
-            continue
+        # Checking if the folder exists:
+        if os.path.exists(f'{c.REPO_PATH}{c.SIG_PRE_PATH}'):
+            if os.path.exists(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}'):
+                while os.path.isfile(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv'):
+                    csv_version += 1
+                    continue
+                else:
+                    sliced_signals.to_csv(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv', index=False)
+            else:
+                os.mkdir(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}')
+                sliced_signals.to_csv(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv', index=False)
         else:
-            sliced_signals.to_csv(f'{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv', index=False)
+            os.mkdir(f'{c.REPO_PATH}{c.SIG_PRE_PATH}')
+            os.mkdir(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}')
+            sliced_signals.to_csv(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv', index=False)
     return sliced_signals
