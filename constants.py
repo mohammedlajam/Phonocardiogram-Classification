@@ -1,8 +1,9 @@
-# This file contains all the variables, which is used in this repository:
+# This file contains all the variables, which are used in this repository:
 # 1. Paths:
-DATASET_PATH = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/'
-SIG_PRE_PATH = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/biosignal_processing/signal_preprocessing'
-FEATURE_EXTRACTION_PATH = '/Users/mohammedlajam/Documents/GitHub/Datasets/Phonocardiogram/PhysioNet_2016/biosignal_processing/feature_extraction'
+REPO_PATH = '/Users/mohammedlajam/Documents/GitHub/Phonocardiogram-Classification'
+DATASET_PATH = '/data/pcg_signals/PhysioNet_2016'
+SIG_PRE_PATH = '/data/denoised_signals'
+FEATURE_EXTRACTION_PATH = '/data/extracted_features'
 
 # 2. Signal-preprocessing variables:
 SAMPLING_RATE = 1000
@@ -20,3 +21,4 @@ SPLIT_FREQUENCY = 256
 N_MELS = 128
 N_MFCCS = 13
 N_SCALES = 30
+
