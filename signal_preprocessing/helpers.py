@@ -397,7 +397,7 @@ def slice_signals(signals, period, sr, save=False, csv_version=int, denoise_meth
 
     # saving the DataFrame into the path of local machine as csv file:
     if save:
-        # Checking if the folder exists:
+        # Checking if the directory exists:
         if os.path.exists(f'{c.REPO_PATH}{c.SIG_PRE_PATH}'):
             if os.path.exists(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}'):
                 while os.path.isfile(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}/{denoise_method}_v{csv_version}.csv'):
