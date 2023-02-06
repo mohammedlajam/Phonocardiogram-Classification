@@ -1,6 +1,6 @@
 # This file contains all the variables, which are used in this repository:
 # 1. Paths:
-REPO_PATH = '/Users/mohammedlajam/Documents/GitHub/Phonocardiogram-Classification'
+REPO_PATH = '/Users/mohammedlajam/Documents/GitHub/pcg-classification'
 DATASET_PATH = '/data/pcg_signals/PhysioNet_2016'
 SIG_PRE_PATH = '/data/denoised_signals'
 FEATURE_EXTRACTION_PATH = '/data/extracted_features'
