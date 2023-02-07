@@ -1,3 +1,33 @@
+"""
+Author: Mohammed Lajam
+
+Phase 3: Feature Extraction:
+- In this phase, different features are extracted from the preprocessed signals.
+- These features are extracted from:
+    - Time-Domain
+    - Frequency Domain
+    - Time-Frequency Representation
+
+Objective:
+The objective of this phase is to extract all the possible features from the preprocessed
+signals, so that it can be used as data in the Machine Learning Phase (Phase 4).
+
+Input:
+- The input is the preprocessed signals, which are saved in 'data/denoised_signals' directory. and
+it is being accessed using the function 'access_signals'
+
+Output:
+1. Numeric Features of all the used methods in a DataFrame and are being saved in csv format in
+the directory 'data/extracted_features/csv'
+2. Images of all the Time-Frequency Domain methods and csv file containing signal_ids and their
+classes.
+
+Note:
+- All the functions and variables, which are used in this file, are imported from helpers.py
+file from the feature_extraction package in the same repository.
+"""
+
+
 # Importing libraries:
 import pandas as pd
 from glob import glob
@@ -49,7 +79,10 @@ def check_create_dir():
 
 
 def access_signals(denoise_method):
-    """Function to access the latest version of the preprocessed signals."""
+    """Function to access the latest version of the preprocessed signals.
+    the denoise_method is either 'emd', 'wavelet_transform', 'digital_filters', 'emd_wavelet',
+    'emd_dfilters' or 'emd_wl_dfilters'
+    """
     # Searching and reading the latest csv version based on with 'denoising method':
     list_of_versions = glob(f'{c.REPO_PATH}{c.SIG_PRE_PATH}/{denoise_method}/*.csv')
     latest_version = max(list_of_versions, key=os.path.getctime)
@@ -505,7 +538,7 @@ class TimeFrequencyRepresentation:
             except Exception as e:
                 print(e)
             else:
-                for signal in range(10):
+                for signal in range(len(self.signals)):
                     mel_frequency_cepstral_coefficients(signal=self.signals.iloc[signal],
                                                         sr=self.sr,
                                                         mfcc_type=mfcc_type,
@@ -530,7 +563,7 @@ class TimeFrequencyRepresentation:
             except Exception as e:
                 print(e)
             else:
-                for signal in range(10):
+                for signal in range(len(self.signals)):
                     mel_frequency_cepstral_coefficients(signal=self.signals.iloc[signal],
                                                         sr=self.sr,
                                                         mfcc_type=mfcc_type,
@@ -555,7 +588,7 @@ class TimeFrequencyRepresentation:
             except Exception as e:
                 print(e)
             else:
-                for signal in range(10):
+                for signal in range(len(self.signals)):
                     mel_frequency_cepstral_coefficients(signal=self.signals.iloc[signal],
                                                         sr=self.sr,
                                                         mfcc_type=mfcc_type,
@@ -580,7 +613,7 @@ class TimeFrequencyRepresentation:
         except Exception as e:
             print(e)
         else:
-            for signal in range(10):
+            for signal in range(len(self.signals)):
                 cwt_scalogram(signal=self.signals.iloc[signal],
                               num_scales=num_scales,
                               wavelet_family=wavelet_family,

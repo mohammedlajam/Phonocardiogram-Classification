@@ -2,8 +2,8 @@
 Author: Mohammed Lajam
 
 Phase 2: Signal Preprocessing:
-- In this python file, the audio data is extracted from the local machine and being preprocessed
-using EMD-Digital Filter function.
+- In this python file, the audio data is extracted from the 'data/pcg_signals/PhysioNet_2016'
+directory and being preprocessed using EMD-Digital Filter function.
 - After denoising the signals, Slicing the signals takes place to a specific length, so that all
 signals are equal in length and therefore the number of samples per signals are equal.
 
@@ -13,9 +13,9 @@ in a folder 'denoised_signals' in 'signal_preprocessing' package.
 
 Note:
 - The Dataset is downloaded from PhysioNet_2016 Challenge.
-- This Repository does not contain a folder of data. Hence, create a folder inside the Repository
-called 'data'. Inside 'data' folder, create another folder called 'pcg-signals' and place
-PhysioNet_2016 data inside it.
+- This Repository does not contain of 'data' directory. Hence, create a directory inside the
+Repository called 'data'. Inside 'data' directory, create another directory called 'pcg-signals'
+and place PhysioNet_2016 data inside it.
 - In 'constants.py', REPO_PATH has to be adjusted before running this file.
 - All the functions and variables, which are used in this file, are imported from helpers.py
 file from the signal_processing package in the same repository.
