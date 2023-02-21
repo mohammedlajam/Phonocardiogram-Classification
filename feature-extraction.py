@@ -174,7 +174,9 @@ def _extract_numeric_features(audio_signals):
         zcr_std.append(std)
 
         # 1.6. Zero-Crossing Rate for complete signal:
-        signal_zcr = signal_time_domain.extract_zero_crossing_rate(plot=False, des_stats=False)
+        signal_zcr = signal_time_domain.extract_zero_crossing_rate(frames=False,
+                                                                   plot=False,
+                                                                   des_stats=False)
         zcr.append(signal_zcr)
 
         # 2. Frequency-Domain Features:
