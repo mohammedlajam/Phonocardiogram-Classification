@@ -384,13 +384,13 @@ if __name__ == "__main__":
     _check_create_dir()
     # 1. Extract Numeric Features:
     # 1.1. Normalization:
-    NORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='normalized')
+    NORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='normalized')
     NORMALIZED_FEATURES = _extract_numeric_features(audio_signals=NORMALIZED_SIGNALS)
     NORMALIZED_FEATURES = NORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=NORMALIZED_FEATURES, csv_version=1, normalization='normalized')
 
     # 1.2. Denormalization:
-    DENORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='denormalized')
+    DENORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='denormalized')
     DENORMALIZED_FEATURES = _extract_numeric_features(audio_signals=DENORMALIZED_SIGNALS)
     DENORMALIZED_FEATURES = DENORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=DENORMALIZED_FEATURES, csv_version=1, normalization='denormalized')
