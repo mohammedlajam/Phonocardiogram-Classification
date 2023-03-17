@@ -1,3 +1,12 @@
+"""
+Author: Mohammed Lajam
+
+This file contains a collection of helper functions that are commonly used in Feature Extraction
+'Phase 3'. These functions provide support for various tasks such as extracting features from
+Time-Domain, Frequency-Domain and Time-Frequency Domain. The purpose of these helper functions
+is to  encapsulate repetitive and complex code into reusable and modular blocks, making it easier
+to maintain and improve the overall functionality of the project.
+"""
 # Importing libraries:
 import numpy as np
 import matplotlib.pyplot as plt

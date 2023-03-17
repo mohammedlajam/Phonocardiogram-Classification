@@ -235,6 +235,7 @@ if __name__ == "__main__":
                                                           period=c.PERIOD)
 
     # 2.5. Saving DataFrames:
+
     _save_dataframe(dataframe=DENORMALIZED_ORIGINAL_SIGNALS,
                     normalization='denormalized',
                     denoise_method='original_signals',

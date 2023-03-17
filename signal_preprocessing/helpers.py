@@ -1,10 +1,10 @@
 """
 Author: Mohammed Lajam
 
-This file contains a collection of helper functions that are commonly used in Phase 2.
-These functions provide support for various tasks such as data processing, visualization,and
-computation. The purpose of these helper functions is to encapsulate repetitive and complex code
-into reusable and modular blocks, making it easier to maintain and improve the overall
+This file contains a collection of helper functions that are commonly used in Signal Preprocessing
+'Phase 2'. These functions provide support for various tasks such as data processing, visualization
+and computation. The purpose of these helper functions is to  encapsulate repetitive and complex
+code into reusable and modular blocks, making it easier to maintain and improve the overall
 functionality of the project.
 """
 
