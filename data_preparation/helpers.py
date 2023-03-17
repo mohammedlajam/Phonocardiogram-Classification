@@ -168,17 +168,17 @@ class FeatureEngineering:
         x_train_resampled, y_train_resampled = smote.fit_resample(x_train, y_train)
         return x_train_resampled, y_train_resampled
 
-    def replace_missing_values(self, dataframe, feature: str, replace_method: str):
+    def replace_missing_values(self, feature: str, replace_method: str):
         if replace_method == 'mean':
-            mean = dataframe[feature].median()
-            dataframe[feature].fillna(mean, inplace=True)
+            mean = self.dataset[feature].median()
+            self.dataset[feature].fillna(mean, inplace=True)
         elif replace_method == 'median':
-            median = dataframe[feature].median()
-            dataframe[feature].fillna(median, inplace=True)
+            median = self.dataset[feature].median()
+            self.dataset[feature].fillna(median, inplace=True)
         else:
             raise ValueError(
                 f"'{replace_method}' is not a valid method. The 'replace_method' is either 'mean' or 'median'.")
-        return dataframe
+        return self.dataset
 
 
 class FeatureSelection:
@@ -237,7 +237,7 @@ class FeatureSelection:
         else:
             return top_ranked_features
 
-    def drop_correlated_features(self, threshold: float, top_features: list):
+    def drop_correlated_features(self, threshold: float, top_features: list, drop=False):
         """Function to calculate the correlation between every pair of features and remove
         the correlated feature with higher skewness coefficient."""
         correlated_features = []  # Set of all the names of correlated columns
@@ -262,7 +262,10 @@ class FeatureSelection:
         correlated_features = list(set(correlated_features))
         # Remove any feature from correlated_features, which exists in the top_ranked_features:
         correlated_features = [feature for feature in correlated_features if feature not in top_features]
-        x_train = self.x_train.drop(correlated_features, axis=1)
-        x_test = self.x_test.drop(correlated_features, axis=1)
-        return x_train, x_test, correlated_features
+        if drop:
+            x_train = self.x_train.drop(correlated_features, axis=1)
+            x_test = self.x_test.drop(correlated_features, axis=1)
+            return x_train, x_test, correlated_features
+        else:
+            return correlated_features
 
