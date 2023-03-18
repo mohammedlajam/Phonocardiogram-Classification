@@ -17,7 +17,7 @@ from scipy.stats import probplot
 # Feature Engineering Libraries:
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, StratifiedGroupKFold
 from scipy import stats
 from imblearn.over_sampling import SMOTE
 # Feature Selection Libraries:
@@ -118,10 +118,12 @@ class FeatureEngineering:
     def create_cross_validation(self, n_folds: int, rand_state: int):
         """Function to generate the indices for train and test set of each fold of the cross
         validation. It returns two list containing the indices for train and test sets."""
-        cv = StratifiedKFold(n_splits=n_folds, shuffle=True, random_state=rand_state)
+        cv = StratifiedGroupKFold(n_splits=n_folds, shuffle=True, random_state=rand_state)
         train_indices = []
         test_indices = []
-        for fold, (train_idx, test_idx) in enumerate(cv.split(self.dataset, self.dataset['class'])):
+        for fold, (train_idx, test_idx) in enumerate(cv.split(self.dataset,
+                                                              self.dataset['class'],
+                                                              groups=self.dataset['signal_id'])):
             train_indices.append(train_idx)
             test_indices.append(test_idx)
         return train_indices, test_indices
