@@ -29,3 +29,44 @@ TEST_SIZE = 0.2
 RANDOM_STATE = 42
 N_FOLDS = 6
 CORR_THRESHOLD = 0.8
+
+# 6. Classification models:
+# 6.1. Tabular Data:
+# 6.1.1. Support Vector Machine:
+SVM_KERNEL = 'rbf'
+SVM_GAMMA = 1.0
+SVM_C = 1.0
+
+# 6.1.2. TabNet:
+# Model Parameters for building the TabNet Model:
+TB_N_D = 16  # best at 32
+TB_N_A = 16  # best at 32
+TB_N_STEPS = 10  # best at 10 (recommended bet. 1 to 10)
+TB_GAMMA = 1
+TB_N_IND = 5  # best at 5(recommended bet. 1 to 5)
+TB_N_SHARED = 2  # best at 2 (recommended 2 or 4)
+TB_LEARNING_RATE = 0.001
+TB_MASK_TYPE = 'entmax'  # sparsemax, entmax, softmax
+
+# Model Parameters for fitting the TabNet Model:
+TB_EPOCHS = 1
+TB_PATIENCE = 40
+TB_BATCH_SIZE = 1024
+
+# 6.1.3. CNN:
+# Model Parameters for building the TabNet Model:
+CNN_FILTER_1 = 16
+CNN_FILTER_2 = 16
+CNN_DENSE_1 = 500
+CNN_DENSE_2 = 1000
+CNN_PATIENCE = 40
+CNN_OPTIMIZER = 'adam'
+CNN_LOSS = 'binary_crossentropy'
+
+# Model Parameters for fitting the TabNet Model:
+CNN_EPOCHS = 1
+CNN_BATCH_SIZE = 32
+
+# 6.1.4. RNN:
+
+# 6.1.5. C-RNN:
