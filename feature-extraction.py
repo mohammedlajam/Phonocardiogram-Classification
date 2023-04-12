@@ -89,7 +89,7 @@ def _check_create_dir():
     return None
 
 
-def _access_signals(denoise_method, normalization: str):
+def _access_signals(denoise_method, normalization: str, version: int):
     """Function to access the latest version of the preprocessed signals.
     the denoise_method is either 'emd', 'wavelet_transform', 'digital_filters', 'emd_wavelet',
     'emd_dfilters' or 'emd_wl_dfilters'. Normalization is either 'normalized' or 'denormalized'.
@@ -98,15 +98,14 @@ def _access_signals(denoise_method, normalization: str):
     if normalization not in ['normalized', 'denormalized']:
         raise ValueError("'normalization is with 'normalized' or 'denormalized'.")
     else:
-        list_of_versions = glob(f'{c.SIG_PRE_PATH}/{normalization}/{denoise_method}/*.csv')
-        latest_version = max(list_of_versions, key=os.path.getctime)
-        audio_signals = pd.read_csv(latest_version)
+        audio_signals = pd.read_csv(
+            f'{c.SIG_PRE_PATH}/{normalization}/{denoise_method}/{denoise_method}_v{version}.csv')
 
-    # Generating signal_ids:
-    audio_signals = audio_signals.assign(signal_id=[f'signal_{number}' for number in range(len(audio_signals))])
+    # Rename the column of signal_id and class:
+    audio_signals = audio_signals.rename(columns={audio_signals.columns[-1]: 'signal_id'})
 
     # Separate the signals from signal_id and class:
-    signal_references = audio_signals.loc[:, ['signal_id', 'class']]
+    signal_references = audio_signals[['signal_id', 'class']]
     audio_signals = audio_signals.drop(['signal_id', 'class'], axis='columns')
     return audio_signals, signal_references
 
@@ -382,15 +381,16 @@ def _extract_save_images(audio_signals, references, rep_type: str):
 
 if __name__ == "__main__":
     _check_create_dir()
+
     # 1. Extract Numeric Features:
     # 1.1. Normalization:
-    NORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='normalized')
+    NORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='normalized', version=2)
     NORMALIZED_FEATURES = _extract_numeric_features(audio_signals=NORMALIZED_SIGNALS)
     NORMALIZED_FEATURES = NORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=NORMALIZED_FEATURES, csv_version=1, normalization='normalized')
 
     # 1.2. Denormalization:
-    DENORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='denormalized')
+    DENORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='denormalized', version=2)
     DENORMALIZED_FEATURES = _extract_numeric_features(audio_signals=DENORMALIZED_SIGNALS)
     DENORMALIZED_FEATURES = DENORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=DENORMALIZED_FEATURES, csv_version=1, normalization='denormalized')

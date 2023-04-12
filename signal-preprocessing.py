@@ -144,7 +144,8 @@ def _slice_signals(audio_signals, references, sr, period):
         end = sr * period
         for j in range(8):  # The number of slices in each row
             signal = pd.DataFrame(audio_signals.iloc[i, start:end]).T
-            signal['class'] = references.iloc[i, -1]
+            signal['class'] = references.loc[i, 'class']
+            signal['signal_id'] = references.loc[i, 'signal_id']
             sliced_signals.append(np.array(signal))
             start += sr * period
             end += sr * period
