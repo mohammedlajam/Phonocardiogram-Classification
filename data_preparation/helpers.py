@@ -157,6 +157,7 @@ class FeatureEngineering:
                              f"'reciprocal', 'square_root', 'exponential' or 'boxcox'")
         return pd.DataFrame(transformed_feature)
 
+    @staticmethod
     def normalize_data(self, x_train, x_test):
         """Function to normalize datasets."""
         scaler = MinMaxScaler()
@@ -164,6 +165,7 @@ class FeatureEngineering:
         x_test_normalized = pd.DataFrame(scaler.transform(x_test), columns=x_test.columns)
         return x_train_normalized, x_test_normalized
 
+    @staticmethod
     def balance_dataset(self, x_train, y_train, rand_state: int):
         """Function to balance dataset using SMOTE technique."""
         smote = SMOTE(random_state=rand_state)

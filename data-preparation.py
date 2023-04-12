@@ -699,7 +699,7 @@ def _drop_correlated_features_all_folds(x_train_folds, x_test_folds, y_train_fol
     return x_train_folds, x_test_folds, common_correlated_features_folds
 
 
-def _save_as_pickle_files(x_train_folds, x_test_folds, y_train_folds, y_test_folds, feature_selection=bool):
+def _save_as_pickle_files(x_train_folds, x_test_folds, y_train_folds, y_test_folds, feature_selection=True):
     """Function to save each fold as a pickle file in 'data/cross_validation' directory."""
     if feature_selection:
         folds = [x_train_folds, x_test_folds, y_train_folds, y_test_folds]
@@ -739,6 +739,9 @@ if __name__ == "__main__":
     for fold_index in range(len(X_TRAIN_FOLDS_TRANSFORMED)):
         FeatureEngineering(dataset=X_TRAIN_FOLDS_TRANSFORMED[fold_index]).replace_missing_values(feature='delta_1_max',
                                                                                                  replace_method='median')
+    for fold_index in range(len(X_TRAIN_FOLDS_TRANSFORMED)):
+        FeatureEngineering(dataset=X_TEST_FOLDS_TRANSFORMED[fold_index]).replace_missing_values(feature='delta_1_max',
+                                                                                                 replace_method='median')
 
     # 1.2.2. Normalization:
     X_TRAIN_FOLDS_NORMALIZED = []
@@ -746,7 +749,7 @@ if __name__ == "__main__":
     for fold_index in range(len(X_TRAIN_FOLDS)):
         X_TRAIN_NORMALIZED, X_TEST_NORMALIZED = FeatureEngineering(dataset=DATASET).normalize_data(
             x_train=X_TRAIN_FOLDS_TRANSFORMED[fold_index],
-            x_test=X_TRAIN_FOLDS_TRANSFORMED[fold_index])
+            x_test=X_TEST_FOLDS_TRANSFORMED[fold_index])
         X_TRAIN_FOLDS_NORMALIZED.append(X_TRAIN_NORMALIZED)
         X_TEST_FOLDS_NORMALIZED.append(X_TEST_NORMALIZED)
 
@@ -760,6 +763,13 @@ if __name__ == "__main__":
             rand_state=c.RANDOM_STATE)
         X_TRAIN_FOLDS_RESAMPLED.append(X_TRAIN_RESAMPLED)
         Y_TRAIN_FOLDS_RESAMPLED.append(Y_TRAIN_RESAMPLED)
+
+    # Saving all features in Local Machine:
+    _save_as_pickle_files(x_train_folds=X_TRAIN_FOLDS_RESAMPLED,
+                          x_test_folds=X_TEST_FOLDS_NORMALIZED,
+                          y_train_folds=Y_TRAIN_FOLDS_RESAMPLED,
+                          y_test_folds=Y_TEST_FOLDS,
+                          feature_selection=False)
 
     # 2. Feature Selection:
     # 2.1. Correlation between input feature and output target:
@@ -776,15 +786,7 @@ if __name__ == "__main__":
         y_test_folds=Y_TEST_FOLDS,
         top_common_features=COMMON_FEATURES)
 
-    # Saving all DataFrames in Local Machine:
-    # All Features:
-    _save_as_pickle_files(x_train_folds=X_TRAIN_FOLDS_RESAMPLED,
-                          x_test_folds=X_TEST_FOLDS_NORMALIZED,
-                          y_train_folds=Y_TRAIN_FOLDS_RESAMPLED,
-                          y_test_folds=Y_TEST_FOLDS,
-                          feature_selection=False)
-
-    # Selected Features:
+    # Saving selected features in Local Machine:
     _save_as_pickle_files(x_train_folds=X_TRAIN_FOLDS_SELECTED,
                           x_test_folds=X_TEST_FOLDS_SELECTED,
                           y_train_folds=Y_TRAIN_FOLDS_RESAMPLED,
