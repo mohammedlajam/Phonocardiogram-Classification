@@ -12,19 +12,80 @@ maintain and improve the overall functionality of the project.
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 from sklearn import svm
 import torch
 from pytorch_tabnet.tab_model import TabNetClassifier
+
+from keras.models import Sequential
+from keras import layers
+from keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, Flatten
+from keras.regularizers import l2
+from keras.callbacks import EarlyStopping
+from keras import optimizers
+from keras_tuner.tuners import BayesianOptimization
+
+
 from sklearn.metrics import roc_auc_score, confusion_matrix, precision_score, recall_score, f1_score, accuracy_score, \
     roc_curve, auc
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, Flatten
-from keras.callbacks import EarlyStopping
 
 import warnings
 warnings.filterwarnings('ignore')
+
+
+class HyperParametersTuner:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def find_best_1d_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials, epochs, directory):
+        """Function to find the best Hyper-Parameters for 1D-CNN Model."""
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_1d_cnn_model(hp):
+            cnn_model = Sequential()
+            cnn_model.add(Conv1D(filters=hp.Int('filter_1', min_value=64, max_value=256, step=32),
+                                 kernel_size=3,
+                                 activation='relu',
+                                 input_shape=input_shape,
+                                 kernel_regularizer=l2(hp.Choice('filter_1_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(MaxPooling1D(pool_size=2))
+            cnn_model.add(Conv1D(filters=hp.Int('filter_2', min_value=64, max_value=256, step=32),
+                                 kernel_size=3,
+                                 activation='relu',
+                                 kernel_regularizer=l2(hp.Choice('filter_2_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(MaxPooling1D(pool_size=2))
+            cnn_model.add(Flatten())
+            cnn_model.add(Dense(hp.Int('dense_1', min_value=32, max_value=256, step=32),
+                                activation='relu',
+                                kernel_regularizer=l2(hp.Choice('dense_1_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(Dropout(hp.Float('dropout_rate', min_value=0.0, max_value=0.5, step=0.1)))
+            cnn_model.add(Dense(hp.Int('dense_2', min_value=32, max_value=256, step=32),
+                                activation='relu',
+                                kernel_regularizer=l2(hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(Dense(1, activation='sigmoid'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            cnn_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+            return cnn_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_1d_cnn_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='pcg-classification')
+
+        tuner.search(x_train, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
 
 
 class ModelBuilder:
@@ -72,21 +133,35 @@ class ModelBuilder:
 
     @staticmethod
     def build_fit_1d_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
-                         dense_1: int, dense_2: int, optimizer: str, loss: str, patience: int,
+                         dense_1: int, dense_2: int, filter_1_l2: float, filter_2_l2: float, dense_1_l2: float,
+                         dense_2_l2: float, dropout_rate: float, learning_rate: float, loss: str, patience: int,
                          epochs: int, batch_size: int):
-        """Function to build, complie and fit 1D-CNN Model. It returns Model and History."""
+        """Function to build, compile and fit 1D-CNN Model. It returns Model and History."""
         # Build 1D-CNN Model:
         cnn_model = Sequential()
-        cnn_model.add(Conv1D(filters=filter_1, kernel_size=3, activation='relu', input_shape=input_shape))
+        cnn_model.add(Conv1D(filters=filter_1,
+                             kernel_size=3,
+                             activation='relu',
+                             input_shape=input_shape,
+                             kernel_regularizer=l2(filter_1_l2)))
         cnn_model.add(MaxPooling1D(pool_size=2))
-        cnn_model.add(Conv1D(filters=filter_2, kernel_size=3, activation='relu'))
+        cnn_model.add(Conv1D(filters=filter_2,
+                             kernel_size=3,
+                             activation='relu',
+                             kernel_regularizer=l2(filter_2_l2)))
         cnn_model.add(MaxPooling1D(pool_size=2))
         cnn_model.add(Flatten())
-        cnn_model.add(Dense(dense_1, activation='relu'))
-        cnn_model.add(Dense(dense_2, activation='relu'))
+        cnn_model.add(Dense(dense_1,
+                            activation='relu',
+                            kernel_regularizer=l2(dense_1_l2)))
+        cnn_model.add(layers.Dropout(dropout_rate))
+        cnn_model.add(Dense(dense_2,
+                            activation='relu',
+                            kernel_regularizer=l2(dense_2_l2)))
         cnn_model.add(Dense(1, activation='sigmoid'))
 
         # Compile the Model:
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
         cnn_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
         early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
