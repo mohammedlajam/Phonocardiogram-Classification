@@ -8,12 +8,14 @@ directory.
 signals are equal in length and therefore the number of samples per signals are equal.
 
 Objective:
-- Building, predicting, evaluating and tuning 1D-CNN Classifier Model and save the
-best model with respect to Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity and
+- Finding the best Hyper-Parameters by using Bayesian Optimization Technique from Keras tuners.
+- Building the Model based on the best Hyper-Parameters per fold and making predictions and
+evaluating the Model based on Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity and
 ROC_AUC Score, etc.
+- Saving all the Artifacts, Parameters and Matrices in mlflow to be used in Phase 6.
 
 Input:
-- The input data is the 6 Folds of X_TRAIN, X_TEST, Y_TRAIN, Y_TEST.
+- The input data is the 6 Folds of X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS.
 
 Output:
 - The outputs are Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity and
@@ -29,11 +31,14 @@ file from the 'models' package in the same repository.
 import os
 import pickle
 
+import seaborn as sns
+
 import constants as c
 from models.helpers import *
 from sklearn.model_selection import train_test_split
 import mlflow
 import mlflow.sklearn
+import logging
 
 
 # Functions to be used in this python file:
@@ -89,10 +94,49 @@ def _data_per_fold(x_train, x_test, y_train, y_test):
     return x_train, x_test, x_val, y_train, y_test, y_val
 
 
-def _run_evaluate_1d_cnn(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
+def _tune_hyper_parameters(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
+    """Function to tune Hyper-Parameters and return a DataFrame for the best Hyper-Parameters
+    per fold."""
+    best_hp_folds = []
+    best_validation_folds = []
+    for fold in range(len(X_TRAIN_FOLDS)):
+        x_train, x_test, x_val, y_train, y_test, y_val = _data_per_fold(x_train=x_train_folds[fold],
+                                                                        x_test=x_test_folds[fold],
+                                                                        y_train=y_train_folds[fold],
+                                                                        y_test=y_test_folds[fold])
+
+        # Reshaping the x_train and x_val:
+        x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+        x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
+
+        input_shape = x_train.shape[1:]
+
+        best_hp, best_validation = HyperParametersTuner.find_best_1d_cnn_hp(x_train=x_train,
+                                                                            x_val=x_val,
+                                                                            y_train=y_train,
+                                                                            y_val=y_val,
+                                                                            input_shape=input_shape,
+                                                                            max_trials=c.TB_CNN_HP_MAX_TRIALS,
+                                                                            epochs=c.TB_CNN_HP_EPOCHS,
+                                                                            directory=f'/{c.REPO_PATH}/models/hp/1d_cnn/fold_{fold}/')
+        best_hp_folds.append(best_hp)
+        best_validation_folds.append(best_validation)
+
+    # Creating one DataFrame including Hyper-Parameters and Validation Scores:
+    best_hp_folds = pd.DataFrame(best_hp_folds)
+    best_hp_folds['val_accuracy'] = best_validation_folds
+    # Arranging the rows descendingly based on the val_accuracy:
+    best_hp_folds = best_hp_folds.sort_values('val_accuracy', ascending=False)
+    return best_hp_folds
+
+
+def _run_evaluate_1d_cnn_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y_test_folds, best_hp_folds):
     """Function to run and evaluate 1D-CNN Model. It returns all the Matrices, paramters and
     Artifacts into mlflow."""
     with mlflow.start_run():
+        # Removing the warning messages while Executing the code and keep only the Errors:
+        logging.getLogger('mlflow').setLevel(logging.ERROR)
+
         # Creating Empty Lists for all Evaluation Matrices:
         threshold_folds, accuracy_folds, precision_folds, recall_folds, f1_score_folds = [], [], [], [], []
         sensitivity_folds, specificity_folds = [], []
@@ -119,15 +163,24 @@ def _run_evaluate_1d_cnn(x_train_folds, x_test_folds, y_train_folds, y_test_fold
                                                                y_train=y_train,
                                                                y_val=y_val,
                                                                input_shape=input_shape,
-                                                               filter_1=c.CNN_FILTER_1,
-                                                               filter_2=c.CNN_FILTER_2,
-                                                               dense_1=c.CNN_DENSE_1,
-                                                               dense_2=c.CNN_DENSE_2,
-                                                               optimizer=c.CNN_OPTIMIZER,
-                                                               loss=c.CNN_LOSS,
-                                                               patience=c.CNN_PATIENCE,
-                                                               epochs=c.CNN_EPOCHS,
-                                                               batch_size=c.CNN_BATCH_SIZE)
+                                                               filter_1=best_hp_folds.iloc[0]['filter_1'],
+                                                               filter_2=best_hp_folds.iloc[0]['filter_2'],
+                                                               dense_1=best_hp_folds.iloc[0]['dense_1'],
+                                                               dense_2=best_hp_folds.iloc[0]['dense_2'],
+                                                               filter_1_l2=best_hp_folds.iloc[0]['filter_1_l2'],
+                                                               filter_2_l2=best_hp_folds.iloc[0]['filter_2_l2'],
+                                                               dense_1_l2=best_hp_folds.iloc[0]['dense_1_l2'],
+                                                               dense_2_l2=best_hp_folds.iloc[0]['dense_2_l2'],
+                                                               dropout_rate=best_hp_folds.iloc[0]['dropout_rate'],
+                                                               learning_rate=best_hp_folds.iloc[0]['learning_rate'],
+                                                               loss=c.TB_CNN_LOSS,
+                                                               patience=c.TB_CNN_PATIENCE,
+                                                               epochs=c.TB_CNN_EPOCHS,
+                                                               batch_size=c.TB_CNN_BATCH_SIZE)
+
+            # Saving the Model
+            model_name = f"1d_cnn_model_{fold}"
+            mlflow.sklearn.log_model(cnn_model, model_name)
 
             # Plotting and saving Accuracy vs Epoch:
             fig, ax = plt.subplots(figsize=(6, 4))
@@ -174,7 +227,7 @@ def _run_evaluate_1d_cnn(x_train_folds, x_test_folds, y_train_folds, y_test_fold
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
 
-        # 3. Calculating the Average of all Evaluation Matrices:
+        # 3. Calculating the mean of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
         mean_accuracy = sum(accuracy_folds) / len(accuracy_folds)
         mean_precision = sum(precision_folds) / len(precision_folds)
@@ -190,54 +243,84 @@ def _run_evaluate_1d_cnn(x_train_folds, x_test_folds, y_train_folds, y_test_fold
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
         cm_mean = (sum(cm_folds) / len(cm_folds)).astype(int)
 
-        # Interpolating FPR and TPR to 500 thresholds, because they have different lengths:
-        mean_thresholds = np.linspace(0, 1, 6000)
+        # 4. Calculating the Standard Deviation of all Evaluation Matrices:
+        std_threshold = np.std(threshold_folds)
+        std_accuracy = np.std(accuracy_folds)
+        std_precision = np.std(precision_folds)
+        std_recall = np.std(recall_folds)
+        std_f1_score = np.std(f1_score_folds)
+        std_sensitivity = np.std(sensitivity_folds)
+        std_specificity = np.std(specificity_folds)
+        std_tn = np.std(tn_folds)
+        std_fp = np.std(fp_folds)
+        std_fn = np.std(fn_folds)
+        std_tp = np.std(tp_folds)
+        std_roc_auc = np.std(roc_auc_folds)
+        std_auc_score = np.std(auc_score_folds)
 
-        # Interpolate the FPR and TPR values for each fold to the mean thresholds:
-        fpr_interpolated = []
-        tpr_interpolated = []
-        for fold in range(len(fpr_folds)):
-            fpr_interpolated.append(np.interp(mean_thresholds, fpr_folds[fold], tpr_folds[fold]))
-            tpr_interpolated.append(np.interp(mean_thresholds, fpr_folds[fold], tpr_folds[fold]))
-
-        # Calculate the mean FPR and TPR across the folds:
-        mean_fpr = np.mean(fpr_interpolated, axis=0)
-        mean_tpr = np.mean(tpr_interpolated, axis=0)
-
-        # 4. logging all Artifacts, Parameters and Matrices into mlflow:
+        # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
-        mlflow.log_param('filter_1', c.CNN_FILTER_1)
-        mlflow.log_param('filter_2', c.CNN_FILTER_2)
-        mlflow.log_param('dense_1', c.CNN_DENSE_1)
-        mlflow.log_param('dense_2', c.CNN_DENSE_2)
-        mlflow.log_param('patience', c.CNN_PATIENCE)
-        mlflow.log_param('optimizer', c.CNN_OPTIMIZER)
-        mlflow.log_param('loss', c.CNN_LOSS)
-        mlflow.log_param('epochs', c.CNN_EPOCHS)
-        mlflow.log_param('batch_size', c.CNN_BATCH_SIZE)
+        mlflow.log_param('filter_1', best_hp_folds.iloc[0]['filter_1'])
+        mlflow.log_param('filter_2', best_hp_folds.iloc[0]['filter_2'])
+        mlflow.log_param('dense_1', best_hp_folds.iloc[0]['dense_1'])
+        mlflow.log_param('dense_2', best_hp_folds.iloc[0]['dense_2'])
+        mlflow.log_param('filter_1_l2', best_hp_folds.iloc[0]['filter_1_l2'])
+        mlflow.log_param('filter_2_l2', best_hp_folds.iloc[0]['filter_2_l2'])
+        mlflow.log_param('dense_1_l2', best_hp_folds.iloc[0]['dense_1_l2'])
+        mlflow.log_param('dense_2_l2', best_hp_folds.iloc[0]['dense_2_l2'])
+        mlflow.log_param('dropout_rate', best_hp_folds.iloc[0]['dropout_rate'])
+        mlflow.log_param('learning_rate', best_hp_folds.iloc[0]['learning_rate'])
+        mlflow.log_param('patience', c.TB_CNN_PATIENCE)
+        mlflow.log_param('epochs', c.TB_CNN_EPOCHS)
+        mlflow.log_param('batch_size', c.TB_CNN_BATCH_SIZE)
 
         # Log the Matrices (Evaluation):
-        mlflow.log_metric('Threshold', mean_threshold)
-        mlflow.log_metric('Accuracy', mean_accuracy)
-        mlflow.log_metric('Precision', mean_precision)
-        mlflow.log_metric('Recall', mean_recall)
-        mlflow.log_metric('F1_Score', mean_f1_score)
-        mlflow.log_metric('Sensitivity', mean_sensitivity)
-        mlflow.log_metric('Specificity', mean_specificity)
-        mlflow.log_metric('TN', mean_tn)
-        mlflow.log_metric('FP', mean_fp)
-        mlflow.log_metric('FN', mean_fn)
-        mlflow.log_metric('TP', mean_tp)
-        mlflow.log_metric('ROC_AUC', mean_roc_auc)
-        mlflow.log_metric('AUC_Score', mean_auc_score)
-        mlflow.log_param('FPR', mean_fpr)  # Saving in Parameters as they are a list
-        mlflow.log_param('TPR', mean_tpr)  # Saving in Parameters as they are a list
+        # Mean of Matrices:
+        mlflow.log_metric('mean_threshold', mean_threshold)
+        mlflow.log_metric('mean_accuracy', mean_accuracy)
+        mlflow.log_metric('mean_precision', mean_precision)
+        mlflow.log_metric('mean_recall', mean_recall)
+        mlflow.log_metric('mean_f1_score', mean_f1_score)
+        mlflow.log_metric('mean_sensitivity', mean_sensitivity)
+        mlflow.log_metric('mean_specificity', mean_specificity)
+        mlflow.log_metric('mean_tn', mean_tn)
+        mlflow.log_metric('mean_fp', mean_fp)
+        mlflow.log_metric('mean_fn', mean_fn)
+        mlflow.log_metric('mean_tp', mean_tp)
+        mlflow.log_metric('mean_roc_auc', mean_roc_auc)
+        mlflow.log_metric('mean_auc_score', mean_auc_score)
+
+        # Standard Deviation of Matrices:
+        mlflow.log_metric('std_threshold', float(std_threshold))
+        mlflow.log_metric('std_accuracy', float(std_accuracy))
+        mlflow.log_metric('std_precision', float(std_precision))
+        mlflow.log_metric('std_recall', float(std_recall))
+        mlflow.log_metric('std_f1_score', float(std_f1_score))
+        mlflow.log_metric('std_sensitivity', float(std_sensitivity))
+        mlflow.log_metric('std_specificity', float(std_specificity))
+        mlflow.log_metric('std_tn', float(std_tn))
+        mlflow.log_metric('std_fp', float(std_fp))
+        mlflow.log_metric('std_fn', float(std_fn))
+        mlflow.log_metric('std_tp', float(std_tp))
+        mlflow.log_metric('std_roc_auc', float(std_roc_auc))
+        mlflow.log_metric('std_auc_score', float(std_auc_score))
+
+        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
+        with open('1d_cnn_fpr_folds.pkl', 'wb') as f:
+            pickle.dump(fpr_folds, f)
+        mlflow.log_artifact('1d_cnn_fpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('1d_cnn_fpr_folds.pkl')
+
+        with open('1d_cnn_tpr_folds.pkl', 'wb') as f:
+            pickle.dump(tpr_folds, f)
+        mlflow.log_artifact('1d_cnn_tpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('1d_cnn_tpr_folds.pkl')
 
         # Saving the Model's Summary:
-        artifact_path = "cnn_summary.txt"
+        artifact_path = "1d_cnn_summary.txt"
         with open(artifact_path, "w") as f:
             cnn_model.summary(print_fn=lambda x: f.write(x + "\n"))
-        mlflow.log_artifact(artifact_path, "cnn_summary.txt")
+        mlflow.log_artifact(artifact_path, "1d_cnn_summary.txt")
         os.remove(artifact_path)
 
         # Logging the Average Confusion Matrix into mlflow:
@@ -248,8 +331,211 @@ def _run_evaluate_1d_cnn(x_train_folds, x_test_folds, y_train_folds, y_test_fold
         ax.set_title("Confusion Matrix")
         mlflow.log_figure(fig, "confusion_matrix.png")  # Log the plot in mlflow
 
-        # Saving the Model
-        mlflow.sklearn.log_model(cnn_model, 'model')
+        # End the mlflow run:
+        mlflow.end_run()
+    return None
+
+
+def _run_evaluate_1d_cnn_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
+    """Function to run and evaluate 1D-CNN Model. It returns all the Matrices, paramters and
+    Artifacts into mlflow."""
+    with mlflow.start_run():
+        # Removing the warning messages while Executing the code and keep only the Errors:
+        logging.getLogger('mlflow').setLevel(logging.ERROR)
+
+        # Creating Empty Lists for all Evaluation Matrices:
+        threshold_folds, accuracy_folds, precision_folds, recall_folds, f1_score_folds = [], [], [], [], []
+        sensitivity_folds, specificity_folds = [], []
+        tn_folds, fp_folds, fn_folds, tp_folds = [], [], [], []
+        roc_auc_folds, auc_score_folds = [], []
+        fpr_folds, tpr_folds = [], []
+        cm_folds = []
+
+        for fold in range(len(x_train_folds)):
+            x_train, x_test, x_val, y_train, y_test, y_val = _data_per_fold(x_train=x_train_folds[fold],
+                                                                            x_test=x_test_folds[fold],
+                                                                            y_train=y_train_folds[fold],
+                                                                            y_test=y_test_folds[fold])
+
+            # Reshaping the x_train and x_val:
+            x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+            x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
+
+            input_shape = x_train.shape[1:]
+
+            # 1. Building and fitting 1D-CNN Model:
+            cnn_model, history = ModelBuilder.build_fit_1d_cnn(x_train=x_train,
+                                                               x_val=x_val,
+                                                               y_train=y_train,
+                                                               y_val=y_val,
+                                                               input_shape=input_shape,
+                                                               filter_1=c.TB_CNN_FILTER_1,
+                                                               filter_2=c.TB_CNN_FILTER_2,
+                                                               dense_1=c.TB_CNN_DENSE_1,
+                                                               dense_2=c.TB_CNN_DENSE_2,
+                                                               filter_1_l2=c.TB_CNN_FILTER_1_L2,
+                                                               filter_2_l2=c.TB_CNN_FILTER_2_L2,
+                                                               dense_1_l2=c.TB_CNN_DENSE_1_L2,
+                                                               dense_2_l2=c.TB_CNN_DENSE_2_L2,
+                                                               dropout_rate=c.TB_CNN_DROPOUT_RATE,
+                                                               learning_rate=c.TB_CNN_LEARNING_RATE,
+                                                               loss=c.TB_CNN_LOSS,
+                                                               patience=c.TB_CNN_PATIENCE,
+                                                               epochs=c.TB_CNN_EPOCHS,
+                                                               batch_size=c.TB_CNN_BATCH_SIZE)
+
+            # Saving the Model
+            model_name = f"1d_cnn_model_{fold}"
+            mlflow.sklearn.log_model(cnn_model, model_name)
+
+            # Plotting and saving Accuracy vs Epoch:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.plot(history.history['accuracy'], label=f'Fold_{fold + 1} Train Accuracy')
+            ax.plot(history.history['val_accuracy'], label=f'Fold_{fold + 1} Validation Accuracy')
+            ax.set_xlabel('Epoch')
+            ax.set_ylabel('Accuracy')
+            ax.set_title('Accuracy over Epochs')
+            ax.legend()
+            mlflow.log_figure(fig, f'Accuracy_vs_Epochs (Fold_{fold + 1}).png')  # Log the plot in mlflow
+
+            # 2. Predictions:
+            # Calculating the Probabilities:
+            y_prob = ModelEvaluator.calculate_probabilities(model=cnn_model, x_test=x_test)
+
+            # Finding the best threshold that provides the best accuracy:
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+
+            # Calculating Evaluation Matrix:
+            evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
+                                                              y_prob=y_prob,
+                                                              threshold=best_threshold)
+
+            # Generating Confusion Matrix:
+            cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
+                                                          y_prob=y_prob,
+                                                          threshold=best_threshold)
+
+            # Extracting evaluations matrices based on threshold, which provides the best accuracy:
+            threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
+            accuracy_folds.append(evaluation_matrix.iloc[0]['Accuracy'])
+            precision_folds.append(evaluation_matrix.iloc[0]['Precision'])
+            recall_folds.append(evaluation_matrix.iloc[0]['Recall'])
+            f1_score_folds.append(evaluation_matrix.iloc[0]['F1-score'])
+            sensitivity_folds.append(evaluation_matrix.iloc[0]['Sensitivity'])
+            specificity_folds.append(evaluation_matrix.iloc[0]['Specificity'])
+            tn_folds.append(evaluation_matrix.iloc[0]['TN'])
+            fp_folds.append(evaluation_matrix.iloc[0]['FP'])
+            fn_folds.append(evaluation_matrix.iloc[0]['FN'])
+            tp_folds.append(evaluation_matrix.iloc[0]['TP'])
+            roc_auc_folds.append(evaluation_matrix.iloc[0]['ROC_AUC'])
+            auc_score_folds.append(evaluation_matrix.iloc[0]['AUC_Score'])
+            fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
+            tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
+            cm_folds.append(cm)
+
+        # 3. Calculating the mean of all Evaluation Matrices:
+        mean_threshold = sum(threshold_folds) / len(threshold_folds)
+        mean_accuracy = sum(accuracy_folds) / len(accuracy_folds)
+        mean_precision = sum(precision_folds) / len(precision_folds)
+        mean_recall = sum(recall_folds) / len(recall_folds)
+        mean_f1_score = sum(f1_score_folds) / len(f1_score_folds)
+        mean_sensitivity = sum(sensitivity_folds) / len(sensitivity_folds)
+        mean_specificity = sum(specificity_folds) / len(specificity_folds)
+        mean_tn = sum(tn_folds) / len(tn_folds)
+        mean_fp = sum(fp_folds) / len(fp_folds)
+        mean_fn = sum(fn_folds) / len(fn_folds)
+        mean_tp = sum(tp_folds) / len(tp_folds)
+        mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
+        mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
+        cm_mean = (sum(cm_folds) / len(cm_folds)).astype(int)
+
+        # 4. Calculating the Standard Deviation of all Evaluation Matrices:
+        std_threshold = np.std(threshold_folds)
+        std_accuracy = np.std(accuracy_folds)
+        std_precision = np.std(precision_folds)
+        std_recall = np.std(recall_folds)
+        std_f1_score = np.std(f1_score_folds)
+        std_sensitivity = np.std(sensitivity_folds)
+        std_specificity = np.std(specificity_folds)
+        std_tn = np.std(tn_folds)
+        std_fp = np.std(fp_folds)
+        std_fn = np.std(fn_folds)
+        std_tp = np.std(tp_folds)
+        std_roc_auc = np.std(roc_auc_folds)
+        std_auc_score = np.std(auc_score_folds)
+
+        # 5. logging all Artifacts, Parameters and Matrices into mlflow:
+        # Log the Hyper-Parameters:
+        mlflow.log_param('filter_1', c.TB_CNN_FILTER_1)
+        mlflow.log_param('filter_2', c.TB_CNN_FILTER_2)
+        mlflow.log_param('dense_1', c.TB_CNN_DENSE_1)
+        mlflow.log_param('dense_2', c.TB_CNN_DENSE_2)
+        mlflow.log_param('filter_1_l2', c.TB_CNN_FILTER_1_L2)
+        mlflow.log_param('filter_2_l2', c.TB_CNN_FILTER_2_L2)
+        mlflow.log_param('dense_1_l2', c.TB_CNN_DENSE_1_L2)
+        mlflow.log_param('dense_2_l2', c.TB_CNN_DENSE_2_L2)
+        mlflow.log_param('dropout_rate', c.TB_CNN_DROPOUT_RATE)
+        mlflow.log_param('learning_rate', c.TB_CNN_LEARNING_RATE)
+        mlflow.log_param('patience', c.TB_CNN_PATIENCE)
+        mlflow.log_param('epochs', c.TB_CNN_EPOCHS)
+        mlflow.log_param('batch_size', c.TB_CNN_BATCH_SIZE)
+
+        # Log the Matrices (Evaluation):
+        # Mean of Matrices:
+        mlflow.log_metric('mean_threshold', mean_threshold)
+        mlflow.log_metric('mean_accuracy', mean_accuracy)
+        mlflow.log_metric('mean_precision', mean_precision)
+        mlflow.log_metric('mean_recall', mean_recall)
+        mlflow.log_metric('mean_f1_score', mean_f1_score)
+        mlflow.log_metric('mean_sensitivity', mean_sensitivity)
+        mlflow.log_metric('mean_specificity', mean_specificity)
+        mlflow.log_metric('mean_tn', mean_tn)
+        mlflow.log_metric('mean_fp', mean_fp)
+        mlflow.log_metric('mean_fn', mean_fn)
+        mlflow.log_metric('mean_tp', mean_tp)
+        mlflow.log_metric('mean_roc_auc', mean_roc_auc)
+        mlflow.log_metric('mean_auc_score', mean_auc_score)
+
+        # Standard Deviation of Matrices:
+        mlflow.log_metric('std_threshold', float(std_threshold))
+        mlflow.log_metric('std_accuracy', float(std_accuracy))
+        mlflow.log_metric('std_precision', float(std_precision))
+        mlflow.log_metric('std_recall', float(std_recall))
+        mlflow.log_metric('std_f1_score', float(std_f1_score))
+        mlflow.log_metric('std_sensitivity', float(std_sensitivity))
+        mlflow.log_metric('std_specificity', float(std_specificity))
+        mlflow.log_metric('std_tn', float(std_tn))
+        mlflow.log_metric('std_fp', float(std_fp))
+        mlflow.log_metric('std_fn', float(std_fn))
+        mlflow.log_metric('std_tp', float(std_tp))
+        mlflow.log_metric('std_roc_auc', float(std_roc_auc))
+        mlflow.log_metric('std_auc_score', float(std_auc_score))
+
+        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
+        with open('1d_cnn_fpr_folds.pkl', 'wb') as f:
+            pickle.dump(fpr_folds, f)
+        mlflow.log_artifact('1d_cnn_fpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('1d_cnn_fpr_folds.pkl')
+
+        with open('1d_cnn_tpr_folds.pkl', 'wb') as f:
+            pickle.dump(tpr_folds, f)
+        mlflow.log_artifact('1d_cnn_tpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('1d_cnn_tpr_folds.pkl')
+
+        # Saving the Model's Summary:
+        artifact_path = "1d_cnn_summary.txt"
+        with open(artifact_path, "w") as f:
+            cnn_model.summary(print_fn=lambda x: f.write(x + "\n"))
+        mlflow.log_artifact(artifact_path, "1d_cnn_summary.txt")
+        os.remove(artifact_path)
+
+        # Logging the Average Confusion Matrix into mlflow:
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.heatmap(cm_mean, annot=True, fmt='d', ax=ax)
+        ax.set_xlabel("Predicted")
+        ax.set_ylabel("Actual")
+        ax.set_title("Confusion Matrix")
+        mlflow.log_figure(fig, "confusion_matrix.png")  # Log the plot in mlflow
 
         # End the mlflow run:
         mlflow.end_run()
@@ -262,7 +548,23 @@ if __name__ == "__main__":
 
     # Loading Cross Validation Folds:
     X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds()
-    _run_evaluate_1d_cnn(x_train_folds=X_TRAIN_FOLDS,
-                         x_test_folds=X_TEST_FOLDS,
-                         y_train_folds=Y_TRAIN_FOLDS,
-                         y_test_folds=Y_TEST_FOLDS)
+
+    if c.TB_CNN_AUTO_HP:
+        # Tune the Hyper-Parameters:
+        BEST_HP_FOLDS = _tune_hyper_parameters(x_train_folds=X_TRAIN_FOLDS,
+                                               x_test_folds=X_TEST_FOLDS,
+                                               y_train_folds=Y_TRAIN_FOLDS,
+                                               y_test_folds=Y_TEST_FOLDS)
+
+        # Building, Fitting and Evaluating 1D-CNN Model based on best Automatic Hyper-Parameters:
+        _run_evaluate_1d_cnn_automatic_hp(x_train_folds=X_TRAIN_FOLDS,
+                                          x_test_folds=X_TEST_FOLDS,
+                                          y_train_folds=Y_TRAIN_FOLDS,
+                                          y_test_folds=Y_TEST_FOLDS,
+                                          best_hp_folds=BEST_HP_FOLDS)
+    else:
+        # Building, Fitting and Evaluating 1D-CNN Model based on best Manual Hyper-Parameters:
+        _run_evaluate_1d_cnn_manual_hp(x_train_folds=X_TRAIN_FOLDS,
+                                       x_test_folds=X_TEST_FOLDS,
+                                       y_train_folds=Y_TRAIN_FOLDS,
+                                       y_test_folds=Y_TEST_FOLDS)
