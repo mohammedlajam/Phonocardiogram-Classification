@@ -38,7 +38,7 @@ SVM_GAMMA = 1.0
 SVM_C = 1.0
 
 # 6.1.2. TabNet:
-# Model Parameters for building the TabNet Model:
+# Model Hyper-Parameters for building the TabNet Model:
 TB_N_D = 16  # best at 32
 TB_N_A = 16  # best at 32
 TB_N_STEPS = 10  # best at 10 (recommended bet. 1 to 10)
@@ -48,25 +48,37 @@ TB_N_SHARED = 2  # best at 2 (recommended 2 or 4)
 TB_LEARNING_RATE = 0.001
 TB_MASK_TYPE = 'entmax'  # sparsemax, entmax, softmax
 
-# Model Parameters for fitting the TabNet Model:
-TB_EPOCHS = 1
+# Model Hyper-Parameters for fitting the TabNet Model:
+TB_EPOCHS = 500
 TB_PATIENCE = 40
 TB_BATCH_SIZE = 1024
 
-# 6.1.3. CNN:
-# Model Parameters for building the TabNet Model:
-CNN_FILTER_1 = 16
-CNN_FILTER_2 = 16
-CNN_DENSE_1 = 500
-CNN_DENSE_2 = 1000
-CNN_PATIENCE = 40
-CNN_OPTIMIZER = 'adam'
-CNN_LOSS = 'binary_crossentropy'
+# 6.1.3. 1D-CNN:
+TB_CNN_AUTO_HP = False
+# Constants for Automatic Hyper-Parameters Tuning:
+TB_CNN_HP_MAX_TRIALS = 200
+TB_CNN_HP_EPOCHS = 5
 
-# Model Parameters for fitting the TabNet Model:
-CNN_EPOCHS = 1
-CNN_BATCH_SIZE = 32
+# Constants for Manual Hyper-Parameters Tuning:
+TB_CNN_FILTER_1 = 192  # (HP-Tuning: 192) => best at 192
+TB_CNN_FILTER_2 = 160  # (HP-Tuning: 160) => best at 160
+TB_CNN_DENSE_1 = 160  # (HP-Tuning: 192) => best at 192
+TB_CNN_DENSE_2 = 160  # (HP-Tuning: 256) => best at 256
+TB_CNN_FILTER_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+TB_CNN_FILTER_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+TB_CNN_DENSE_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+TB_CNN_DENSE_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+TB_CNN_DROPOUT_RATE = 0.5  # (HP-Tuning: 0) => best at 0.5
+TB_CNN_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.001
 
-# 6.1.4. RNN:
+# Constants for Building and Fitting 1D-CNN Model:
+TB_CNN_PATIENCE = 20
+TB_CNN_OPTIMIZER = 'adam'
+TB_CNN_LOSS = 'binary_crossentropy'
+TB_CNN_EPOCHS = 200  # best at 200
+TB_CNN_BATCH_SIZE = 32
+
+# 6.1.4. RNN-LSTM:
+
 
 # 6.1.5. C-RNN:
