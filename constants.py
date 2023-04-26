@@ -62,8 +62,8 @@ TB_CNN_HP_EPOCHS = 5
 # Constants for Manual Hyper-Parameters Tuning:
 TB_CNN_FILTER_1 = 192  # (HP-Tuning: 192) => best at 192
 TB_CNN_FILTER_2 = 160  # (HP-Tuning: 160) => best at 160
-TB_CNN_DENSE_1 = 160  # (HP-Tuning: 192) => best at 192
-TB_CNN_DENSE_2 = 160  # (HP-Tuning: 256) => best at 256
+TB_CNN_DENSE_1 = 192  # (HP-Tuning: 192) => best at 192
+TB_CNN_DENSE_2 = 256  # (HP-Tuning: 256) => best at 256
 TB_CNN_FILTER_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
 TB_CNN_FILTER_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
 TB_CNN_DENSE_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
@@ -75,10 +75,54 @@ TB_CNN_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.001
 TB_CNN_PATIENCE = 20
 TB_CNN_OPTIMIZER = 'adam'
 TB_CNN_LOSS = 'binary_crossentropy'
-TB_CNN_EPOCHS = 200  # best at 200
-TB_CNN_BATCH_SIZE = 32
+TB_CNN_EPOCHS = 300  # best at 200
+TB_CNN_BATCH_SIZE = 12000  # best at 10000
 
 # 6.1.4. RNN-LSTM:
+TB_LSTM_AUTO_HP = False
+# Constants for Automatic Hyper-Parameters Tuning:
+TB_LSTM_HP_MAX_TRIALS = 100
+TB_LSTM_HP_EPOCHS = 2
 
+# Constants for Manual Hyper-Parameters Tuning:
+TB_LSTM_LSTM_1 = 192
+TB_LSTM_LSTM_2 = 160
+TB_LSTM_1_L2 = 0
+TB_LSTM_2_L2 = 0
+TB_LSTM_DROPOUT_RATE_1 = 0
+TB_LSTM_DROPOUT_RATE_2 = 0
+TB_LSTM_LEARNING_RATE = 0.001
+
+# Constants for Building and Fitting 1D-CNN Model:
+TB_LSTM_PATIENCE = 20
+TB_LSTM_OPTIMIZER = 'adam'
+TB_LSTM_LOSS = 'binary_crossentropy'
+TB_LSTM_EPOCHS = 2  # best at 200
+TB_LSTM_BATCH_SIZE = 32
 
 # 6.1.5. C-RNN:
+# 6.1.3. 1D-CNN:
+TB_CRNN_AUTO_HP = False
+# Constants for Automatic Hyper-Parameters Tuning:
+TB_CRNN_HP_MAX_TRIALS = 100
+TB_CRNN_HP_EPOCHS = 5
+
+# Constants for Manual Hyper-Parameters Tuning:
+TB_CRNN_FILTER_1 = 192
+TB_CRNN_FILTER_2 = 160
+TB_CRNN_LSTM_1 = 192
+TB_CRNN_LSTM_2 = 256
+TB_CRNN_FILTER_1_L2 = 0.001
+TB_CRNN_FILTER_2_L2 = 0.001
+TB_CRNN_LSTM_1_L2 = 0.001
+TB_CRNN_LSTM_2_L2 = 0.001
+TB_CRNN_DROPOUT_RATE_1 = 0.5
+TB_CRNN_DROPOUT_RATE_2 = 0.5
+TB_CRNN_LEARNING_RATE = 0.001
+
+# Constants for Building and Fitting 1D-CNN Model:
+TB_CRNN_PATIENCE = 20
+TB_CRNN_OPTIMIZER = 'adam'
+TB_CRNN_LOSS = 'binary_crossentropy'
+TB_CRNN_EPOCHS = 300
+TB_CRNN_BATCH_SIZE = 32
