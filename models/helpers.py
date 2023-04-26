@@ -19,12 +19,11 @@ from pytorch_tabnet.tab_model import TabNetClassifier
 
 from keras.models import Sequential
 from keras import layers
-from keras.layers import Dense, Dropout, Conv1D, MaxPooling1D, Flatten
+from keras.layers import LSTM, Dense, Dropout, Conv1D, MaxPooling1D, Flatten
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras import optimizers
 from keras_tuner.tuners import BayesianOptimization
-
 
 from sklearn.metrics import roc_auc_score, confusion_matrix, precision_score, recall_score, f1_score, accuracy_score, \
     roc_curve, auc
@@ -38,11 +37,12 @@ class HyperParametersTuner:
         pass
 
     @staticmethod
-    def find_best_1d_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials, epochs, directory):
+    def find_best_tabular_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                                 epochs: int, directory: str):
         """Function to find the best Hyper-Parameters for 1D-CNN Model."""
 
         # Building the Model with Hyper-Parameters to be tuned:
-        def build_1d_cnn_model(hp):
+        def build_tabular_cnn_model(hp):
             cnn_model = Sequential()
             cnn_model.add(Conv1D(filters=hp.Int('filter_1', min_value=64, max_value=256, step=32),
                                  kernel_size=3,
@@ -71,7 +71,107 @@ class HyperParametersTuner:
             return cnn_model
 
         # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
-        tuner = BayesianOptimization(build_1d_cnn_model,
+        tuner = BayesianOptimization(build_tabular_cnn_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='pcg-classification')
+
+        tuner.search(x_train, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
+
+    @staticmethod
+    def find_best_tabular_lstm_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                                  epochs: int, directory: str):
+        """Function to find the best Hyper-Parameters for LSTM Model."""
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_tabular_lstm_model(hp):
+            lstm_model = Sequential()
+            lstm_model.add(LSTM(units=hp.Int('lstm_1', min_value=32, max_value=256, step=32),
+                                input_shape=input_shape,
+                                kernel_regularizer=l2(hp.Choice('lstm_1_l2', values=[0.0, 0.01, 0.001])),
+                                return_sequences=True))
+            lstm_model.add(Dropout(hp.Float('dropout_rate_1', min_value=0.0, max_value=0.5, step=0.1)))
+            lstm_model.add(LSTM(units=hp.Int('lstm_2', min_value=32, max_value=256, step=32),
+                                kernel_regularizer=l2(hp.Choice('lstm_2_l2', values=[0.0, 0.01, 0.001]))))
+            lstm_model.add(Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
+            ''' An additional Dense Layer:
+            lstm_model.add(Dense(hp.Int('dense', min_value=32, max_value=256, step=32),
+                                 activation='relu',
+                                 kernel_regularizer=l2(hp.Choice('dense_l2', values=[0.0, 0.01, 0.001]))))'''
+            lstm_model.add(Dense(1, activation='sigmoid'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            lstm_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+            return lstm_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_tabular_lstm_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='pcg-classification')
+
+        tuner.search(x_train, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
+
+    @staticmethod
+    def find_best_tabular_crnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                                  epochs: int, directory: str):
+        """Function to find the best Hyper-Parameters for 1D-CNN Model."""
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_tabular_crnn_model(hp):
+            crnn_model = Sequential()
+            # Adding Convolutional Layers:
+            crnn_model.add(Conv1D(filters=hp.Int('filter_1', min_value=64, max_value=256, step=32),
+                                  kernel_size=3,
+                                  activation='relu',
+                                  input_shape=input_shape,
+                                  kernel_regularizer=l2(hp.Choice('filter_1_l2', values=[0.0, 0.01, 0.001]))))
+            crnn_model.add(MaxPooling1D(pool_size=2))
+            crnn_model.add(Conv1D(filters=hp.Int('filter_2', min_value=64, max_value=256, step=32),
+                                  kernel_size=3,
+                                  activation='relu',
+                                  kernel_regularizer=l2(hp.Choice('filter_2_l2', values=[0.0, 0.01, 0.001]))))
+            crnn_model.add(MaxPooling1D(pool_size=2))
+
+            # Adding LSTM Layers:
+            crnn_model.add(LSTM(units=hp.Int('lstm_1', min_value=32, max_value=256, step=32),
+                                input_shape=input_shape,
+                                kernel_regularizer=l2(hp.Choice('lstm_1_l2', values=[0.0, 0.01, 0.001])),
+                                return_sequences=True))
+            crnn_model.add(Dropout(hp.Float('dropout_rate_1', min_value=0.0, max_value=0.5, step=0.1)))
+            crnn_model.add(LSTM(units=hp.Int('lstm_2', min_value=32, max_value=256, step=32),
+                                kernel_regularizer=l2(hp.Choice('lstm_2_l2', values=[0.0, 0.01, 0.001]))))
+            crnn_model.add(Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
+            crnn_model.add(Flatten())
+            # Adding Dense Layer as an Output:
+            crnn_model.add(Dense(1, activation='sigmoid'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            crnn_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+            return crnn_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_tabular_crnn_model,
                                      objective='val_accuracy',
                                      max_trials=max_trials,
                                      directory=directory,
@@ -93,7 +193,7 @@ class ModelBuilder:
         pass
 
     @staticmethod
-    def build_fit_svm(x_train, y_train, kernel: str, gamma: str, c: float, rand_state: int):
+    def build_fit_tabular_svm(x_train, y_train, kernel: str, gamma: str, c: float, rand_state: int):
         """Function to build and fit Support Vector Machine."""
         # Building the Model:
         svm_model = svm.SVC(kernel=kernel, gamma=gamma, C=c, random_state=rand_state)
@@ -102,7 +202,7 @@ class ModelBuilder:
         return svm_model
 
     @staticmethod
-    def build_fit_tabnet(x_train, x_val, y_train, y_val, n_d: int, n_a: int, n_steps: int, gamma: float,
+    def build_fit_tabular_tabnet(x_train, x_val, y_train, y_val, n_d: int, n_a: int, n_steps: int, gamma: float,
                          n_ind: int, n_shared: int, learning_rate: float, mask_type: str, epochs: int,
                          patience: int, batch_size: int):
         """Function to build and fit TabNet Model."""
@@ -132,10 +232,10 @@ class ModelBuilder:
         return tb_model
 
     @staticmethod
-    def build_fit_1d_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
-                         dense_1: int, dense_2: int, filter_1_l2: float, filter_2_l2: float, dense_1_l2: float,
-                         dense_2_l2: float, dropout_rate: float, learning_rate: float, loss: str, patience: int,
-                         epochs: int, batch_size: int):
+    def build_fit_tabular_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
+                              dense_1: int, dense_2: int, filter_1_l2: float, filter_2_l2: float,
+                              dense_1_l2: float, dense_2_l2: float, dropout_rate: float, learning_rate: float,
+                              loss: str, patience: int, epochs: int, batch_size: int):
         """Function to build, compile and fit 1D-CNN Model. It returns Model and History."""
         # Build 1D-CNN Model:
         cnn_model = Sequential()
@@ -170,6 +270,81 @@ class ModelBuilder:
         history = cnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
                                 callbacks=[early_stop])
         return cnn_model, history
+
+    @staticmethod
+    def build_fit_tabular_lstm(x_train, x_val, y_train, y_val, input_shape, lstm_1: int, lstm_2: int,
+                               lstm_1_l2: float, lstm_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
+                               learning_rate: float, loss: str, patience: int, epochs: int, batch_size: int):
+        """Function to build, compile and fit LSTM Model with 2 LSTM layers. It returns Model and History."""
+        # Build LSTM Model:
+        lstm_model = Sequential()
+        lstm_model.add(LSTM(units=lstm_1,
+                            input_shape=input_shape,
+                            kernel_regularizer=l2(lstm_1_l2),
+                            return_sequences=True))
+        lstm_model.add(Dropout(dropout_rate_1))
+        lstm_model.add(LSTM(units=lstm_2,
+                            kernel_regularizer=l2(lstm_2_l2)))
+        lstm_model.add(Dropout(dropout_rate_2))
+        ''' An Additional dense layer:
+        lstm_model.add(Dense(dense_units,
+                             activation='relu',
+                             kernel_regularizer=l2(dense_l2)))'''
+        lstm_model.add(Dense(1, activation='sigmoid'))
+
+        # Compile the Model:
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        lstm_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+
+        # Fitting the Model:
+        history = lstm_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
+                                 callbacks=[early_stop])
+        return lstm_model, history
+
+    @staticmethod
+    def build_fit_tabular_crnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
+                               lstm_1: int, lstm_2: int, filter_1_l2: float, filter_2_l2: float,
+                               lstm_1_l2: float, lstm_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
+                               learning_rate: float, loss: str, patience: int, epochs: int, batch_size: int):
+        """Function to build, compile and fit C-RNN Model. It returns Model and History."""
+        # Build 1D-CNN Model:
+        # Adding Convolutional Layers:
+        crnn_model = Sequential()
+        crnn_model.add(Conv1D(filters=filter_1,
+                              kernel_size=3,
+                              activation='relu',
+                              input_shape=input_shape,
+                              kernel_regularizer=l2(filter_1_l2)))
+        crnn_model.add(MaxPooling1D(pool_size=2))
+        crnn_model.add(Conv1D(filters=filter_2,
+                              kernel_size=3,
+                              activation='relu',
+                              kernel_regularizer=l2(filter_2_l2)))
+        crnn_model.add(MaxPooling1D(pool_size=2))
+        # Adding LSTM Layers:
+        crnn_model.add(LSTM(units=lstm_1,
+                            kernel_regularizer=l2(lstm_1_l2),
+                            return_sequences=True))
+        crnn_model.add(Dropout(dropout_rate_1))
+        crnn_model.add(LSTM(units=lstm_2,
+                            kernel_regularizer=l2(lstm_2_l2)))
+        crnn_model.add(Dropout(dropout_rate_2))
+        crnn_model.add(Flatten())
+        # Adding Dense Layer as an Output:
+        crnn_model.add(Dense(1, activation='sigmoid'))
+
+        # Compile the Model:
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        crnn_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+
+        # Fitting the Model:
+        history = crnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
+                                 callbacks=[early_stop])
+        return crnn_model, history
 
 
 # 2. Class for calculating Predictions and evaluating Model:
