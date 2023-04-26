@@ -111,14 +111,14 @@ def _tune_hyper_parameters(x_train_folds, x_test_folds, y_train_folds, y_test_fo
 
         input_shape = x_train.shape[1:]
 
-        best_hp, best_validation = HyperParametersTuner.find_best_1d_cnn_hp(x_train=x_train,
-                                                                            x_val=x_val,
-                                                                            y_train=y_train,
-                                                                            y_val=y_val,
-                                                                            input_shape=input_shape,
-                                                                            max_trials=c.TB_CNN_HP_MAX_TRIALS,
-                                                                            epochs=c.TB_CNN_HP_EPOCHS,
-                                                                            directory=f'/{c.REPO_PATH}/models/hp/1d_cnn/fold_{fold}/')
+        best_hp, best_validation = HyperParametersTuner.find_best_tabular_cnn_hp(x_train=x_train,
+                                                                                 x_val=x_val,
+                                                                                 y_train=y_train,
+                                                                                 y_val=y_val,
+                                                                                 input_shape=input_shape,
+                                                                                 max_trials=c.TB_CNN_HP_MAX_TRIALS,
+                                                                                 epochs=c.TB_CNN_HP_EPOCHS,
+                                                                                 directory=f'/{c.REPO_PATH}/models/hp/tabular_cnn/fold_{fold}/')
         best_hp_folds.append(best_hp)
         best_validation_folds.append(best_validation)
 
@@ -158,28 +158,28 @@ def _run_evaluate_1d_cnn_automatic_hp(x_train_folds, x_test_folds, y_train_folds
             input_shape = x_train.shape[1:]
 
             # 1. Building and fitting 1D-CNN Model:
-            cnn_model, history = ModelBuilder.build_fit_1d_cnn(x_train=x_train,
-                                                               x_val=x_val,
-                                                               y_train=y_train,
-                                                               y_val=y_val,
-                                                               input_shape=input_shape,
-                                                               filter_1=best_hp_folds.iloc[0]['filter_1'],
-                                                               filter_2=best_hp_folds.iloc[0]['filter_2'],
-                                                               dense_1=best_hp_folds.iloc[0]['dense_1'],
-                                                               dense_2=best_hp_folds.iloc[0]['dense_2'],
-                                                               filter_1_l2=best_hp_folds.iloc[0]['filter_1_l2'],
-                                                               filter_2_l2=best_hp_folds.iloc[0]['filter_2_l2'],
-                                                               dense_1_l2=best_hp_folds.iloc[0]['dense_1_l2'],
-                                                               dense_2_l2=best_hp_folds.iloc[0]['dense_2_l2'],
-                                                               dropout_rate=best_hp_folds.iloc[0]['dropout_rate'],
-                                                               learning_rate=best_hp_folds.iloc[0]['learning_rate'],
-                                                               loss=c.TB_CNN_LOSS,
-                                                               patience=c.TB_CNN_PATIENCE,
-                                                               epochs=c.TB_CNN_EPOCHS,
-                                                               batch_size=c.TB_CNN_BATCH_SIZE)
+            cnn_model, history = ModelBuilder.build_fit_tabular_cnn(x_train=x_train,
+                                                                    x_val=x_val,
+                                                                    y_train=y_train,
+                                                                    y_val=y_val,
+                                                                    input_shape=input_shape,
+                                                                    filter_1=best_hp_folds.iloc[0]['filter_1'],
+                                                                    filter_2=best_hp_folds.iloc[0]['filter_2'],
+                                                                    dense_1=best_hp_folds.iloc[0]['dense_1'],
+                                                                    dense_2=best_hp_folds.iloc[0]['dense_2'],
+                                                                    filter_1_l2=best_hp_folds.iloc[0]['filter_1_l2'],
+                                                                    filter_2_l2=best_hp_folds.iloc[0]['filter_2_l2'],
+                                                                    dense_1_l2=best_hp_folds.iloc[0]['dense_1_l2'],
+                                                                    dense_2_l2=best_hp_folds.iloc[0]['dense_2_l2'],
+                                                                    dropout_rate=best_hp_folds.iloc[0]['dropout_rate'],
+                                                                    learning_rate=best_hp_folds.iloc[0]['learning_rate'],
+                                                                    loss=c.TB_CNN_LOSS,
+                                                                    patience=c.TB_CNN_PATIENCE,
+                                                                    epochs=c.TB_CNN_EPOCHS,
+                                                                    batch_size=c.TB_CNN_BATCH_SIZE)
 
             # Saving the Model
-            model_name = f"1d_cnn_model_{fold}"
+            model_name = f"tabular_cnn_model_{fold}"
             mlflow.sklearn.log_model(cnn_model, model_name)
 
             # Plotting and saving Accuracy vs Epoch:
@@ -306,21 +306,21 @@ def _run_evaluate_1d_cnn_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         mlflow.log_metric('std_auc_score', float(std_auc_score))
 
         # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('1d_cnn_fpr_folds.pkl', 'wb') as f:
+        with open('tabular_cnn_fpr_folds.pkl', 'wb') as f:
             pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('1d_cnn_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('1d_cnn_fpr_folds.pkl')
+        mlflow.log_artifact('tabular_cnn_fpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('tabular_cnn_fpr_folds.pkl')
 
-        with open('1d_cnn_tpr_folds.pkl', 'wb') as f:
+        with open('tabular_cnn_tpr_folds.pkl', 'wb') as f:
             pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('1d_cnn_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('1d_cnn_tpr_folds.pkl')
+        mlflow.log_artifact('tabular_cnn_tpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('tabular_cnn_tpr_folds.pkl')
 
         # Saving the Model's Summary:
-        artifact_path = "1d_cnn_summary.txt"
+        artifact_path = "tabular_cnn_summary.txt"
         with open(artifact_path, "w") as f:
             cnn_model.summary(print_fn=lambda x: f.write(x + "\n"))
-        mlflow.log_artifact(artifact_path, "1d_cnn_summary.txt")
+        mlflow.log_artifact(artifact_path, "tabular_cnn_summary.txt")
         os.remove(artifact_path)
 
         # Logging the Average Confusion Matrix into mlflow:
@@ -364,28 +364,28 @@ def _run_evaluate_1d_cnn_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
             input_shape = x_train.shape[1:]
 
             # 1. Building and fitting 1D-CNN Model:
-            cnn_model, history = ModelBuilder.build_fit_1d_cnn(x_train=x_train,
-                                                               x_val=x_val,
-                                                               y_train=y_train,
-                                                               y_val=y_val,
-                                                               input_shape=input_shape,
-                                                               filter_1=c.TB_CNN_FILTER_1,
-                                                               filter_2=c.TB_CNN_FILTER_2,
-                                                               dense_1=c.TB_CNN_DENSE_1,
-                                                               dense_2=c.TB_CNN_DENSE_2,
-                                                               filter_1_l2=c.TB_CNN_FILTER_1_L2,
-                                                               filter_2_l2=c.TB_CNN_FILTER_2_L2,
-                                                               dense_1_l2=c.TB_CNN_DENSE_1_L2,
-                                                               dense_2_l2=c.TB_CNN_DENSE_2_L2,
-                                                               dropout_rate=c.TB_CNN_DROPOUT_RATE,
-                                                               learning_rate=c.TB_CNN_LEARNING_RATE,
-                                                               loss=c.TB_CNN_LOSS,
-                                                               patience=c.TB_CNN_PATIENCE,
-                                                               epochs=c.TB_CNN_EPOCHS,
-                                                               batch_size=c.TB_CNN_BATCH_SIZE)
+            cnn_model, history = ModelBuilder.build_fit_tabular_cnn(x_train=x_train,
+                                                                    x_val=x_val,
+                                                                    y_train=y_train,
+                                                                    y_val=y_val,
+                                                                    input_shape=input_shape,
+                                                                    filter_1=c.TB_CNN_FILTER_1,
+                                                                    filter_2=c.TB_CNN_FILTER_2,
+                                                                    dense_1=c.TB_CNN_DENSE_1,
+                                                                    dense_2=c.TB_CNN_DENSE_2,
+                                                                    filter_1_l2=c.TB_CNN_FILTER_1_L2,
+                                                                    filter_2_l2=c.TB_CNN_FILTER_2_L2,
+                                                                    dense_1_l2=c.TB_CNN_DENSE_1_L2,
+                                                                    dense_2_l2=c.TB_CNN_DENSE_2_L2,
+                                                                    dropout_rate=c.TB_CNN_DROPOUT_RATE,
+                                                                    learning_rate=c.TB_CNN_LEARNING_RATE,
+                                                                    loss=c.TB_CNN_LOSS,
+                                                                    patience=c.TB_CNN_PATIENCE,
+                                                                    epochs=c.TB_CNN_EPOCHS,
+                                                                    batch_size=c.TB_CNN_BATCH_SIZE)
 
             # Saving the Model
-            model_name = f"1d_cnn_model_{fold}"
+            model_name = f"tabular_cnn_model_{fold}"
             mlflow.sklearn.log_model(cnn_model, model_name)
 
             # Plotting and saving Accuracy vs Epoch:
@@ -512,21 +512,21 @@ def _run_evaluate_1d_cnn_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         mlflow.log_metric('std_auc_score', float(std_auc_score))
 
         # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('1d_cnn_fpr_folds.pkl', 'wb') as f:
+        with open('tabular_cnn_fpr_folds.pkl', 'wb') as f:
             pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('1d_cnn_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('1d_cnn_fpr_folds.pkl')
+        mlflow.log_artifact('tabular_cnn_fpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('tabular_cnn_fpr_folds.pkl')
 
-        with open('1d_cnn_tpr_folds.pkl', 'wb') as f:
+        with open('tabular_cnn_tpr_folds.pkl', 'wb') as f:
             pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('1d_cnn_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('1d_cnn_tpr_folds.pkl')
+        mlflow.log_artifact('tabular_cnn_tpr_folds.pkl', artifact_path='fpr_tpr')
+        os.remove('tabular_cnn_tpr_folds.pkl')
 
         # Saving the Model's Summary:
-        artifact_path = "1d_cnn_summary.txt"
+        artifact_path = "tabular_cnn_summary.txt"
         with open(artifact_path, "w") as f:
             cnn_model.summary(print_fn=lambda x: f.write(x + "\n"))
-        mlflow.log_artifact(artifact_path, "1d_cnn_summary.txt")
+        mlflow.log_artifact(artifact_path, "tabular_cnn_summary.txt")
         os.remove(artifact_path)
 
         # Logging the Average Confusion Matrix into mlflow:
