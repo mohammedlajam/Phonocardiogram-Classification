@@ -14,6 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from sklearn import svm
+from sklearn.model_selection import GridSearchCV
 import torch
 from pytorch_tabnet.tab_model import TabNetClassifier
 
@@ -35,6 +36,17 @@ warnings.filterwarnings('ignore')
 class HyperParametersTuner:
     def __init__(self):
         pass
+
+    @staticmethod
+    def find_best_tabular_svm_hp(x_train, x_val, y_train, y_val, param_grid):
+        """Function to find the best Hyper-Parameters for SVM Model."""
+        # Define SVM model
+        svm_model = svm.SVC()
+        # Grid search:
+        grid_search = GridSearchCV(svm_model, param_grid=param_grid, scoring='accuracy', n_jobs=-1)
+        # Fitting the model:
+        grid_search.fit(x_train, y_train)
+
 
     @staticmethod
     def find_best_tabular_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
@@ -172,6 +184,47 @@ class HyperParametersTuner:
 
         # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
         tuner = BayesianOptimization(build_tabular_crnn_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='pcg-classification')
+
+        tuner.search(x_train, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
+
+    @staticmethod
+    def find_best_tabular_mlp_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                                 epochs: int, directory: str):
+        """Function to find the best Hyper-Parameters for 1D-CNN Model."""
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_tabular_mlp_model(hp):
+            mlp_model = Sequential()
+            mlp_model.add(Dense(hp.Int('dense_1', min_value=32, max_value=512, step=32),
+                                activation='relu',
+                                input_shape=input_shape,
+                                kernel_regularizer=l2(hp.Choice('dense_1_l2', values=[0.0, 0.01, 0.001]))))
+            mlp_model.add(Dropout(hp.Float('dropout_rate_1', min_value=0.0, max_value=0.5, step=0.1)))
+            mlp_model.add(Dense(hp.Int('dense_2', min_value=32, max_value=512, step=32),
+                                activation='relu',
+                                kernel_regularizer=l2(hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
+            mlp_model.add(Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
+            mlp_model.add(Dense(1, activation='sigmoid'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            mlp_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+            return mlp_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_tabular_mlp_model,
                                      objective='val_accuracy',
                                      max_trials=max_trials,
                                      directory=directory,
@@ -345,6 +398,34 @@ class ModelBuilder:
         history = crnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
                                  callbacks=[early_stop])
         return crnn_model, history
+
+    @staticmethod
+    def build_fit_tabular_mlp(x_train, x_val, y_train, y_val, input_shape, dense_1: int, dense_2: int,
+                              dense_1_l2: float, dense_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
+                              learning_rate: float, loss: str, patience: int, epochs: int, batch_size: int):
+        """Function to build, compile and fit MLP Model. It returns Model and History."""
+        # Build MLP Model:
+        mlp_model = Sequential()
+        mlp_model.add(Dense(dense_1,
+                            activation='relu',
+                            kernel_regularizer=l2(dense_1_l2)))
+        mlp_model.add(layers.Dropout(dropout_rate_1))
+        mlp_model.add(Dense(dense_2,
+                            activation='relu',
+                            kernel_regularizer=l2(dense_2_l2)))
+        mlp_model.add(layers.Dropout(dropout_rate_2))
+        mlp_model.add(Dense(1, activation='sigmoid'))
+
+        # Compile the Model:
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        mlp_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+
+        # Fitting the Model:
+        history = mlp_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
+                                callbacks=[early_stop])
+        return mlp_model, history
 
 
 # 2. Class for calculating Predictions and evaluating Model:
