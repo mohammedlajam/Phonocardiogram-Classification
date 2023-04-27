@@ -82,7 +82,7 @@ TB_CNN_BATCH_SIZE = 12000  # best at 10000
 TB_LSTM_AUTO_HP = False
 # Constants for Automatic Hyper-Parameters Tuning:
 TB_LSTM_HP_MAX_TRIALS = 100
-TB_LSTM_HP_EPOCHS = 2
+TB_LSTM_HP_EPOCHS = 3
 
 # Constants for Manual Hyper-Parameters Tuning:
 TB_LSTM_LSTM_1 = 192
@@ -97,11 +97,10 @@ TB_LSTM_LEARNING_RATE = 0.001
 TB_LSTM_PATIENCE = 20
 TB_LSTM_OPTIMIZER = 'adam'
 TB_LSTM_LOSS = 'binary_crossentropy'
-TB_LSTM_EPOCHS = 2  # best at 200
-TB_LSTM_BATCH_SIZE = 32
+TB_LSTM_EPOCHS = 10
+TB_LSTM_BATCH_SIZE = 256
 
 # 6.1.5. C-RNN:
-# 6.1.3. 1D-CNN:
 TB_CRNN_AUTO_HP = False
 # Constants for Automatic Hyper-Parameters Tuning:
 TB_CRNN_HP_MAX_TRIALS = 100
@@ -126,3 +125,25 @@ TB_CRNN_OPTIMIZER = 'adam'
 TB_CRNN_LOSS = 'binary_crossentropy'
 TB_CRNN_EPOCHS = 300
 TB_CRNN_BATCH_SIZE = 32
+
+# 6.1.6. MLP:
+TB_MLP_AUTO_HP = False
+# Constants for Automatic Hyper-Parameters Tuning:
+TB_MLP_HP_MAX_TRIALS = 200
+TB_MLP_HP_EPOCHS = 5
+
+# Constants for Manual Hyper-Parameters Tuning:
+TB_MLP_DENSE_1 = 224  # (HP-Tuning: 224) => best at 224
+TB_MLP_DENSE_2 = 416  # (HP-Tuning: 416) => best at 416
+TB_MLP_DENSE_1_L2 = 0.001  # (HP-Tuning: 0.001) => best at 0.001
+TB_MLP_DENSE_2_L2 = 0.0  # (HP-Tuning: 0.0) => best at 0.0
+TB_MLP_DROPOUT_RATE_1 = 0.1  # (HP-Tuning: 0.1) => best at 0.1
+TB_MLP_DROPOUT_RATE_2 = 0.3  # (HP-Tuning: 0.3) => best at 0.3
+TB_MLP_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.01
+
+# Constants for Building and Fitting 1D-CNN Model:
+TB_MLP_PATIENCE = 20
+TB_MLP_OPTIMIZER = 'adam'
+TB_MLP_LOSS = 'binary_crossentropy'
+TB_MLP_EPOCHS = 300
+TB_MLP_BATCH_SIZE = 32  # (HP-Tuning: 32) => best at 32
