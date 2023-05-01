@@ -33,25 +33,33 @@ CORR_THRESHOLD = 0.8
 # 6. Classification models:
 # 6.1. Tabular Data:
 # 6.1.1. Support Vector Machine:
-SVM_KERNEL = 'rbf'
-SVM_GAMMA = 1.0
-SVM_C = 1.0
+TB_SVM_AUTO_HP = True
+# Model Hyper-Parameters for building the TabNet Model:
+TB_SVM_KERNEL = 'rbf'
+TB_SVM_GAMMA = 1.0
+TB_SVM_C = 1.0
 
 # 6.1.2. TabNet:
+TB_TABNET_AUTO_HP = True
+# Constants for Automatic Hyper-Parameters Tuning:
+TB_TABNET_HP_MAX_TRIALS = 1
+TB_TABNET_HP_EPOCHS = 1
+
 # Model Hyper-Parameters for building the TabNet Model:
-TB_N_D = 16  # best at 32
-TB_N_A = 16  # best at 32
-TB_N_STEPS = 10  # best at 10 (recommended bet. 1 to 10)
-TB_GAMMA = 1
-TB_N_IND = 5  # best at 5(recommended bet. 1 to 5)
-TB_N_SHARED = 2  # best at 2 (recommended 2 or 4)
-TB_LEARNING_RATE = 0.001
-TB_MASK_TYPE = 'entmax'  # sparsemax, entmax, softmax
+TB_TABNET_N_D = 16  # best at 32
+TB_TABNET_N_A = 16  # best at 32
+TB_TABNET_N_STEPS = 10  # best at 10 (recommended bet. 1 to 10)
+TB_TABNET_GAMMA = 1
+TB_TABNET_N_IND = 5  # best at 5(recommended bet. 1 to 5)
+TB_TABNET_N_SHARED = 2  # best at 2 (recommended 2 or 4)
+TB_TABNET_LEARNING_RATE = 0.001
+TB_TABNET_WEIGHT_DECAY = 0.0
+TB_TABNET_MASK_TYPE = 'entmax'  # sparsemax, entmax, softmax
 
 # Model Hyper-Parameters for fitting the TabNet Model:
-TB_EPOCHS = 500
-TB_PATIENCE = 40
-TB_BATCH_SIZE = 1024
+TB_TABNET_EPOCHS = 2
+TB_TABNET_PATIENCE = 40
+TB_TABNET_BATCH_SIZE = 32
 
 # 6.1.3. 1D-CNN:
 TB_CNN_AUTO_HP = False
@@ -81,24 +89,24 @@ TB_CNN_BATCH_SIZE = 12000  # best at 10000
 # 6.1.4. RNN-LSTM:
 TB_LSTM_AUTO_HP = False
 # Constants for Automatic Hyper-Parameters Tuning:
-TB_LSTM_HP_MAX_TRIALS = 100
+TB_LSTM_HP_MAX_TRIALS = 110
 TB_LSTM_HP_EPOCHS = 3
 
 # Constants for Manual Hyper-Parameters Tuning:
-TB_LSTM_LSTM_1 = 192
-TB_LSTM_LSTM_2 = 160
-TB_LSTM_1_L2 = 0
-TB_LSTM_2_L2 = 0
-TB_LSTM_DROPOUT_RATE_1 = 0
-TB_LSTM_DROPOUT_RATE_2 = 0
-TB_LSTM_LEARNING_RATE = 0.001
+TB_LSTM_LSTM_1 = 160  # (HP-Tuning: 160) => best at 160
+TB_LSTM_LSTM_2 = 160  # (HP-Tuning: 160) => best at 160
+TB_LSTM_1_L2 = 0.01  # (HP-Tuning: 0.001) => best at 0.001
+TB_LSTM_2_L2 = 0.01  # (HP-Tuning: 0.0) => best at 0.001
+TB_LSTM_DROPOUT_RATE_1 = 0.4  # (HP-Tuning: 0.2) => best at 0.4
+TB_LSTM_DROPOUT_RATE_2 = 0.4  # (HP-Tuning: 0.4) => best at 0.4
+TB_LSTM_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.001
 
 # Constants for Building and Fitting 1D-CNN Model:
 TB_LSTM_PATIENCE = 20
 TB_LSTM_OPTIMIZER = 'adam'
 TB_LSTM_LOSS = 'binary_crossentropy'
-TB_LSTM_EPOCHS = 10
-TB_LSTM_BATCH_SIZE = 256
+TB_LSTM_EPOCHS = 250
+TB_LSTM_BATCH_SIZE = 256  # (HP-Tuning: 256)
 
 # 6.1.5. C-RNN:
 TB_CRNN_AUTO_HP = False
