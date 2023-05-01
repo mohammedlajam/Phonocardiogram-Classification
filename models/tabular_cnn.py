@@ -131,8 +131,8 @@ def _tune_hyper_parameters(x_train_folds, x_test_folds, y_train_folds, y_test_fo
 
 
 def _run_evaluate_1d_cnn_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y_test_folds, best_hp_folds):
-    """Function to run and evaluate 1D-CNN Model. It returns all the Matrices, paramters and
-    Artifacts into mlflow."""
+    """Function to run and evaluate 1D-CNN based on Automatic adjustment of Parameters from
+    best_hp_folds. It returns all the Matrices, paramters and Artifacts into mlflow."""
     with mlflow.start_run():
         # Removing the warning messages while Executing the code and keep only the Errors:
         logging.getLogger('mlflow').setLevel(logging.ERROR)
@@ -337,8 +337,8 @@ def _run_evaluate_1d_cnn_automatic_hp(x_train_folds, x_test_folds, y_train_folds
 
 
 def _run_evaluate_1d_cnn_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
-    """Function to run and evaluate 1D-CNN Model. It returns all the Matrices, paramters and
-    Artifacts into mlflow."""
+    """Function to run and evaluate 1D-CNN Model based on Manual adjustment of Parameters.
+    It returns all the Matrices, paramters and Artifacts into mlflow."""
     with mlflow.start_run():
         # Removing the warning messages while Executing the code and keep only the Errors:
         logging.getLogger('mlflow').setLevel(logging.ERROR)

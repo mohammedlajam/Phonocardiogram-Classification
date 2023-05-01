@@ -75,7 +75,7 @@ def _load_cv_folds():
 
 
 def _data_per_fold(x_train, x_test, y_train, y_test):
-    """Function to prepare the data for TabNet Model."""
+    """Function to prepare the data for RNN-LSTM Model."""
     # Splitting the data into train and validation sets:
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train,
                                                       test_size=c.TEST_SIZE,
@@ -131,8 +131,8 @@ def _tune_hyper_parameters(x_train_folds, x_test_folds, y_train_folds, y_test_fo
 
 
 def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y_test_folds, best_hp_folds):
-    """Function to run and evaluate RNN-LSTM Model. It returns all the Matrices, paramters and
-    Artifacts into mlflow."""
+    """Function to run and evaluate RNN-LSTM based on Automatic adjustment of Parameters from
+    best_hp_folds. It returns all the Matrices, paramters and Artifacts into mlflow."""
     with mlflow.start_run():
         # Removing the warning messages while Executing the code and keep only the Errors:
         logging.getLogger('mlflow').setLevel(logging.ERROR)
@@ -331,8 +331,8 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
 
 
 def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
-    """Function to run and evaluate RNN-LSTM Model. It returns all the Matrices, paramters and
-    Artifacts into mlflow."""
+    """Function to run and evaluate RNN-LSTM Model based on Manual adjustment of Parameters.
+    It returns all the Matrices, paramters and Artifacts into mlflow."""
     with mlflow.start_run():
         # Removing the warning messages while Executing the code and keep only the Errors:
         logging.getLogger('mlflow').setLevel(logging.ERROR)
@@ -354,8 +354,7 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
             # Reshaping the x_train and x_val:
             x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
             x_val = np.reshape(x_val, (x_val.shape[0], x_val.shape[1], 1))
-            input_shape = (x_train.shape[1], 1)
-            print("input_shape:", input_shape)
+            input_shape = x_train.shape[1:]
 
             # 1. Building and fitting LSTM Model:
             lstm_model, history = ModelBuilder.build_fit_tabular_lstm(x_train=x_train,
