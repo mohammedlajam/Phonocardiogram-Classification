@@ -25,6 +25,9 @@ from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras import optimizers
 from keras_tuner.tuners import BayesianOptimization
+import optuna
+import torch
+import torch.optim as optim
 
 from sklearn.metrics import roc_auc_score, confusion_matrix, precision_score, recall_score, f1_score, accuracy_score, \
     roc_curve, auc
@@ -38,20 +41,123 @@ class HyperParametersTuner:
         pass
 
     @staticmethod
-    def find_best_tabular_svm_hp(x_train, x_val, y_train, y_val, param_grid):
-        """Function to find the best Hyper-Parameters for SVM Model."""
-        # Define SVM model
-        svm_model = svm.SVC()
-        # Grid search:
-        grid_search = GridSearchCV(svm_model, param_grid=param_grid, scoring='accuracy', n_jobs=-1)
-        # Fitting the model:
-        grid_search.fit(x_train, y_train)
+    def find_best_tabular_svm_hp(x_train, y_train, rand_state: int):
+        """Function to optimize Hyper-Parameters  for Support Vector Machine using GridSearchCV."""
+        # Define parameter grid:
+        param_grid = {
+            'kernel': ['linear', 'rbf', 'sigmoid'],
+            'gamma': [0.1, 1, 10],
+            'C': [0.1, 1, 10, 100]
+        }
 
+        # Building the Model:
+        svm_model = svm.SVC(random_state=rand_state)
+
+        # Performing Grid Search Cross Validation
+        clf = GridSearchCV(svm_model, param_grid, n_jobs=-1)
+        clf.fit(x_train, y_train)
+
+        # Getting the best parameters and accuracy score of the best model
+        best_hp = clf.best_params_
+        best_score = pd.DataFrame({'Score': [clf.best_score_]})
+
+        return best_hp, best_score
+
+    @staticmethod
+    def find_best_tabular_tabnet_hp(x_train, x_val, y_train, y_val, max_epochs: int,
+                                    max_trials: int, batch_size: int):
+        """Function to optimize Hyper-Parameters for TabNet Model using Optuna."""
+        def objective(trial):
+            # Defining Hyper-Parameters to be tuned:
+            n_d = trial.suggest_int('n_d', 8, 16, 32, log=True)
+            n_a = trial.suggest_int('n_a', 8, 16, 32, log=True)
+            n_steps = trial.suggest_int('n_steps', 1, 10, step=1)
+            gamma = trial.suggest_float('gamma', 0.1, 5.0, step=1)
+            n_independent = trial.suggest_int('n_independent', 1, 5, step=1)
+            n_shared = trial.suggest_int('n_shared', 2, 4, log=True)
+            learning_rate = trial.suggest_float('learning_rate', 0.001, 0.0001, log=True)
+            weight_decay = trial.suggest_float('weight_decay', 0.0, 0.1, 0.001, log=True)
+            mask_type = trial.suggest_categorical('mask_type', ['sparsemax', 'entmax', 'softmax'])
+
+            # Build and train the TabNet model
+            tabnet_model = TabNetClassifier(n_d=n_d,
+                                            n_a=n_a,
+                                            n_steps=n_steps,
+                                            gamma=gamma,
+                                            n_independent=n_independent,
+                                            n_shared=n_shared,
+                                            optimizer_fn=optim.Adam,
+                                            optimizer_params=dict(lr=learning_rate, weight_decay=weight_decay),
+                                            scheduler_params=dict(step_size=n_steps, gamma=gamma),
+                                            scheduler_fn=torch.optim.lr_scheduler.StepLR,
+                                            mask_type=mask_type)
+
+            tabnet_model.fit(X_train=x_train,
+                             y_train=y_train,
+                             eval_set=[(x_train, y_train), (x_val, y_val)],
+                             eval_name=['train', 'valid'],
+                             eval_metric=['accuracy'],
+                             max_epochs=max_epochs,
+                             batch_size=batch_size,
+                             drop_last=False)
+
+            # Returning the best validation accuracy of a trial:
+            return max(tabnet_model.history['valid_accuracy'])
+
+        # Define the search space for the hyperparameters
+        study = optuna.create_study(direction='maximize')
+        study.optimize(objective, n_trials=max_trials)
+        # Get the best Hyper-Parameters and the corresponding validation accuracy:
+        best_hyperparams = study.best_params
+        best_score = study.best_value
+
+        return best_hyperparams, best_score
+
+    @staticmethod
+    def find_best_tabular_mlp_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                                 epochs: int, directory: str):
+        """Function to optimize Hyper-Parameters for MLP Model using Keras.tuner."""
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_tabular_mlp_model(hp):
+            mlp_model = Sequential()
+            mlp_model.add(Dense(hp.Int('dense_1', min_value=32, max_value=512, step=32),
+                                activation='relu',
+                                input_shape=input_shape,
+                                kernel_regularizer=l2(hp.Choice('dense_1_l2', values=[0.0, 0.01, 0.001]))))
+            mlp_model.add(Dropout(hp.Float('dropout_rate_1', min_value=0.0, max_value=0.5, step=0.1)))
+            mlp_model.add(Dense(hp.Int('dense_2', min_value=32, max_value=512, step=32),
+                                activation='relu',
+                                kernel_regularizer=l2(hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
+            mlp_model.add(Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
+            mlp_model.add(Dense(1, activation='sigmoid'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            mlp_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+            return mlp_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_tabular_mlp_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='pcg-classification')
+
+        tuner.search(x_train, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
 
     @staticmethod
     def find_best_tabular_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
                                  epochs: int, directory: str):
-        """Function to find the best Hyper-Parameters for 1D-CNN Model."""
+        """Function to optimize Hyper-Parameters for 1D-CNN Model using Keras.tuner."""
 
         # Building the Model with Hyper-Parameters to be tuned:
         def build_tabular_cnn_model(hp):
@@ -102,7 +208,7 @@ class HyperParametersTuner:
     @staticmethod
     def find_best_tabular_lstm_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
                                   epochs: int, directory: str):
-        """Function to find the best Hyper-Parameters for LSTM Model."""
+        """Function to optimize Hyper-Parameters for RNN-LSTM Model using Keras.tuner."""
 
         # Building the Model with Hyper-Parameters to be tuned:
         def build_tabular_lstm_model(hp):
@@ -146,7 +252,7 @@ class HyperParametersTuner:
     @staticmethod
     def find_best_tabular_crnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
                                   epochs: int, directory: str):
-        """Function to find the best Hyper-Parameters for 1D-CNN Model."""
+        """Function to optimize Hyper-Parameters for C-RNN Model using Keras.tuner."""
 
         # Building the Model with Hyper-Parameters to be tuned:
         def build_tabular_crnn_model(hp):
@@ -199,47 +305,6 @@ class HyperParametersTuner:
         val_accuracy = history.history['val_accuracy'][-1]
         return best_hps.values, val_accuracy
 
-    @staticmethod
-    def find_best_tabular_mlp_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
-                                 epochs: int, directory: str):
-        """Function to find the best Hyper-Parameters for 1D-CNN Model."""
-
-        # Building the Model with Hyper-Parameters to be tuned:
-        def build_tabular_mlp_model(hp):
-            mlp_model = Sequential()
-            mlp_model.add(Dense(hp.Int('dense_1', min_value=32, max_value=512, step=32),
-                                activation='relu',
-                                input_shape=input_shape,
-                                kernel_regularizer=l2(hp.Choice('dense_1_l2', values=[0.0, 0.01, 0.001]))))
-            mlp_model.add(Dropout(hp.Float('dropout_rate_1', min_value=0.0, max_value=0.5, step=0.1)))
-            mlp_model.add(Dense(hp.Int('dense_2', min_value=32, max_value=512, step=32),
-                                activation='relu',
-                                kernel_regularizer=l2(hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
-            mlp_model.add(Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
-            mlp_model.add(Dense(1, activation='sigmoid'))
-
-            # Tune the optimizer and learning rate
-            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
-            mlp_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
-            return mlp_model
-
-        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
-        tuner = BayesianOptimization(build_tabular_mlp_model,
-                                     objective='val_accuracy',
-                                     max_trials=max_trials,
-                                     directory=directory,
-                                     project_name='pcg-classification')
-
-        tuner.search(x_train, y_train,
-                     epochs=epochs,
-                     validation_data=(x_val, y_val))
-
-        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-        best_model = tuner.hypermodel.build(best_hps)
-        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
-        val_accuracy = history.history['val_accuracy'][-1]
-        return best_hps.values, val_accuracy
-
 
 class ModelBuilder:
     def __init__(self):
@@ -256,8 +321,8 @@ class ModelBuilder:
 
     @staticmethod
     def build_fit_tabular_tabnet(x_train, x_val, y_train, y_val, n_d: int, n_a: int, n_steps: int, gamma: float,
-                         n_ind: int, n_shared: int, learning_rate: float, mask_type: str, epochs: int,
-                         patience: int, batch_size: int):
+                                 n_ind: int, n_shared: int, learning_rate: float, weight_decay: float, mask_type: str,
+                                 epochs: int, patience: int, batch_size: int):
         """Function to build and fit TabNet Model."""
         # Building the Model:
         tb_model = TabNetClassifier(n_d=n_d,
@@ -267,7 +332,7 @@ class ModelBuilder:
                                     n_independent=n_ind,
                                     n_shared=n_shared,
                                     optimizer_fn=torch.optim.Adam,
-                                    optimizer_params=dict(lr=learning_rate, weight_decay=1e-5),
+                                    optimizer_params=dict(lr=learning_rate, weight_decay=weight_decay),
                                     scheduler_fn=torch.optim.lr_scheduler.StepLR,
                                     scheduler_params=dict(step_size=n_steps, gamma=gamma),
                                     mask_type=mask_type)
@@ -331,12 +396,12 @@ class ModelBuilder:
         """Function to build, compile and fit LSTM Model with 2 LSTM layers. It returns Model and History."""
         # Build LSTM Model:
         lstm_model = Sequential()
-        lstm_model.add(LSTM(units=lstm_1,
+        lstm_model.add(LSTM(units=int(lstm_1),
                             input_shape=input_shape,
                             kernel_regularizer=l2(lstm_1_l2),
                             return_sequences=True))
         lstm_model.add(Dropout(dropout_rate_1))
-        lstm_model.add(LSTM(units=lstm_2,
+        lstm_model.add(LSTM(units=int(lstm_2),
                             kernel_regularizer=l2(lstm_2_l2)))
         lstm_model.add(Dropout(dropout_rate_2))
         ''' An Additional dense layer:
@@ -377,11 +442,11 @@ class ModelBuilder:
                               kernel_regularizer=l2(filter_2_l2)))
         crnn_model.add(MaxPooling1D(pool_size=2))
         # Adding LSTM Layers:
-        crnn_model.add(LSTM(units=lstm_1,
+        crnn_model.add(LSTM(units=int(lstm_1),
                             kernel_regularizer=l2(lstm_1_l2),
                             return_sequences=True))
         crnn_model.add(Dropout(dropout_rate_1))
-        crnn_model.add(LSTM(units=lstm_2,
+        crnn_model.add(LSTM(units=int(lstm_2),
                             kernel_regularizer=l2(lstm_2_l2)))
         crnn_model.add(Dropout(dropout_rate_2))
         crnn_model.add(Flatten())
@@ -407,6 +472,7 @@ class ModelBuilder:
         # Build MLP Model:
         mlp_model = Sequential()
         mlp_model.add(Dense(dense_1,
+                            input_shape=input_shape,
                             activation='relu',
                             kernel_regularizer=l2(dense_1_l2)))
         mlp_model.add(layers.Dropout(dropout_rate_1))
