@@ -450,7 +450,7 @@ class TimeFrequencyDomainFeatures:
             return np.array(coefficients), np.array(frequencies)
 
     def extract_dwt_coefficients(self, dwt_levels=False, plot=False, des_stats=False):
-        """Funtion to extract the dwt_coefficients of a signal. if 'dwt_levels' is True, it
+        """Function to extract the dwt_coefficients of a signal. if 'dwt_levels' is True, it
         extract five levels of the dwt, otherwise only one level. It either returns a plot or
         save the image in 'data/extracted_features/images' directory."""
         audio_signal = self.audio_signal

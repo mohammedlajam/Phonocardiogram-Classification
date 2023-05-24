@@ -85,7 +85,6 @@ def _check_create_dir():
         mfccs_path = os.path.join(image_path, 'mfccs', mfccs_type)
         if not os.path.isdir(mfccs_path):
             os.makedirs(mfccs_path)
-
     return None
 
 
@@ -104,9 +103,12 @@ def _access_signals(denoise_method, normalization: str, version: int):
     # Rename the column of signal_id and class:
     audio_signals = audio_signals.rename(columns={audio_signals.columns[-1]: 'signal_id'})
 
+    # Add new column 'image_ref' with serial numbers starting from 'img_1'
+    audio_signals = audio_signals.assign(image_ref=[f'img_{i+1}' for i in range(len(audio_signals))])
+
     # Separate the signals from signal_id and class:
-    signal_references = audio_signals[['signal_id', 'class']]
-    audio_signals = audio_signals.drop(['signal_id', 'class'], axis='columns')
+    signal_references = audio_signals[['image_ref', 'signal_id', 'class']]
+    audio_signals = audio_signals.drop(['image_ref', 'signal_id', 'class'], axis='columns')
     return audio_signals, signal_references
 
 
@@ -307,15 +309,15 @@ def _save_features(dataframe, csv_version: int, normalization: str):
     if normalization not in ['normalized', 'denormalized']:
         raise ValueError("normalization must be either 'normalized' or 'denormalized'.")
     try:
-        os.path.exists(f'{c.FEATURE_EXTRACTION_PATH}/csv/{normalization}')
+        os.path.exists(f'{c.FEATURE_EXTRACTION_PATH}/tabular/{normalization}')
     except Exception as e:
         print(e)
     else:
-        while os.path.isfile(f'{c.FEATURE_EXTRACTION_PATH}/csv/{normalization}/extracted_features_v{csv_version}.csv'):
+        while os.path.isfile(f'{c.FEATURE_EXTRACTION_PATH}/tabular/{normalization}/extracted_features_v{csv_version}.csv'):
             csv_version += 1
             continue
         else:
-            dataframe.to_csv(f'{c.FEATURE_EXTRACTION_PATH}/csv/{normalization}/extracted_features_v{csv_version}.csv',
+            dataframe.to_csv(f'{c.FEATURE_EXTRACTION_PATH}/tabular/{normalization}/extracted_features_v{csv_version}.csv',
                              index=False)
     return None
 
@@ -329,6 +331,9 @@ def _extract_save_images(audio_signals, references, rep_type: str):
     except Exception as e:
         print(e)
     else:
+        # Saving the references:
+        references.to_csv(f'{c.FEATURE_EXTRACTION_PATH}/images/{rep_type}/references.csv', index=False)
+
         for index in range(len(audio_signals)):
             signal_time_freq_domain = TimeFrequencyDomainFeatures(audio_signal=audio_signals.iloc[index, :].astype(np.float32),
                                                                   sr=c.SAMPLING_RATE,
@@ -337,13 +342,13 @@ def _extract_save_images(audio_signals, references, rep_type: str):
             # 1. Spectrogram:
             if rep_type == 'spectrogram':
                 signal_time_freq_domain.extract_spectrogram(save=True,
-                                                            img_ref=references.loc[index, 'signal_id'])
+                                                            img_ref=references.loc[index, 'image_ref'])
 
             # 2. Mel-Spectrogram:
             elif rep_type == 'mel_spectrogram':
                 signal_time_freq_domain.extract_mel_spectrogram(n_mels=c.N_MELS,
                                                                 save=True,
-                                                                img_ref=references.loc[index, 'signal_id'])
+                                                                img_ref=references.loc[index, 'image_ref'])
 
             # 3. MFCCS:
             # 3.1. MFCCS:
@@ -351,31 +356,28 @@ def _extract_save_images(audio_signals, references, rep_type: str):
                 signal_time_freq_domain.extract_mfccs(n_mfcc=c.N_MFCCS,
                                                       mfcc_type='mfccs',
                                                       save=True,
-                                                      img_ref=references.loc[index, 'signal_id'])
+                                                      img_ref=references.loc[index, 'image_ref'])
             # 3.2. delta_1:
             elif rep_type == 'delta_1':
                 signal_time_freq_domain.extract_mfccs(n_mfcc=c.N_MFCCS,
                                                       mfcc_type='delta_1',
                                                       save=True,
-                                                      img_ref=references.loc[index, 'signal_id'])
+                                                      img_ref=references.loc[index, 'image_ref'])
             # 3.3. delta_2:
             elif rep_type == 'delta_2':
                 signal_time_freq_domain.extract_mfccs(n_mfcc=c.N_MFCCS,
                                                       mfcc_type='delta_2',
                                                       save=True,
-                                                      img_ref=references.loc[index, 'signal_id'])
+                                                      img_ref=references.loc[index, 'image_ref'])
 
             # 4. CWT-Scalogram:
             elif rep_type == 'scalogram':
                 signal_time_freq_domain.extract_cwt_scalogram(num_scales=c.N_SCALES,
                                                               wavelet_family='shan',
                                                               save=True,
-                                                              img_ref=references.loc[index, 'signal_id'])
+                                                              img_ref=references.loc[index, 'image_ref'])
             else:
                 raise ValueError(f"Invalid representation type: {rep_type}.")
-
-        # Saving the references:
-        references.to_csv(f'{c.FEATURE_EXTRACTION_PATH}/images/{rep_type}/references.csv', index=False)
     return None
 
 
