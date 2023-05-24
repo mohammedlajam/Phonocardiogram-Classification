@@ -20,7 +20,7 @@ from pytorch_tabnet.tab_model import TabNetClassifier
 
 from keras.models import Sequential
 from keras import layers
-from keras.layers import LSTM, Dense, Dropout, Conv1D, MaxPooling1D, Flatten
+from keras.layers import LSTM, Dense, Dropout, Conv1D, Conv2D, MaxPooling2D, MaxPooling1D, Flatten
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras import optimizers
@@ -40,6 +40,7 @@ class HyperParametersTuner:
     def __init__(self):
         pass
 
+    # 1. Tabular Data:
     @staticmethod
     def find_best_tabular_svm_hp(x_train, y_train, rand_state: int):
         """Function to optimize Hyper-Parameters  for Support Vector Machine using GridSearchCV."""
@@ -69,15 +70,15 @@ class HyperParametersTuner:
         """Function to optimize Hyper-Parameters for TabNet Model using Optuna."""
         def objective(trial):
             # Defining Hyper-Parameters to be tuned:
-            n_d = trial.suggest_int('n_d', 8, 16, 32, log=True)
-            n_a = trial.suggest_int('n_a', 8, 16, 32, log=True)
+            n_d = trial.suggest_categorical('n_d', [8, 16, 32])
+            n_a = trial.suggest_categorical('n_a', [8, 16, 32])
             n_steps = trial.suggest_int('n_steps', 1, 10, step=1)
             gamma = trial.suggest_float('gamma', 0.1, 5.0, step=1)
             n_independent = trial.suggest_int('n_independent', 1, 5, step=1)
-            n_shared = trial.suggest_int('n_shared', 2, 4, log=True)
-            learning_rate = trial.suggest_float('learning_rate', 0.001, 0.0001, log=True)
-            weight_decay = trial.suggest_float('weight_decay', 0.0, 0.1, 0.001, log=True)
-            mask_type = trial.suggest_categorical('mask_type', ['sparsemax', 'entmax', 'softmax'])
+            n_shared = trial.suggest_categorical('n_shared', [2, 4])
+            learning_rate = trial.suggest_categorical('learning_rate', [0.001, 0.0001])
+            weight_decay = trial.suggest_categorical('weight_decay', [0.0, 0.1, 0.001])
+            mask_type = trial.suggest_categorical('mask_type', ['sparsemax', 'entmax'])
 
             # Build and train the TabNet model
             tabnet_model = TabNetClassifier(n_d=n_d,
@@ -305,11 +306,64 @@ class HyperParametersTuner:
         val_accuracy = history.history['val_accuracy'][-1]
         return best_hps.values, val_accuracy
 
+    # 2. Computer Vision:
+    @staticmethod
+    def find_best_cv_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                            epochs: int, directory: str):
+        """Function to optimize Hyper-Parameters for 2D-CNN Model using Keras.tuner."""
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_cv_cnn_model(hp):
+            cnn_model = Sequential()
+            cnn_model.add(Conv2D(filters=hp.Int('filter_1', min_value=32, max_value=128, step=32),
+                                 kernel_size=3,
+                                 activation='relu',
+                                 input_shape=input_shape,
+                                 kernel_regularizer=l2(hp.Choice('filter_1_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(MaxPooling2D(pool_size=2))
+            cnn_model.add(Conv2D(filters=hp.Int('filter_2', min_value=32, max_value=128, step=32),
+                                 kernel_size=3,
+                                 activation='relu',
+                                 kernel_regularizer=l2(hp.Choice('filter_2_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(MaxPooling2D(pool_size=2))
+            cnn_model.add(Flatten())
+            cnn_model.add(Dense(hp.Int('dense_1', min_value=64, max_value=512, step=64),
+                                activation='relu',
+                                kernel_regularizer=l2(hp.Choice('dense_1_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(Dropout(hp.Float('dropout_rate', min_value=0.0, max_value=0.5, step=0.1)))
+            cnn_model.add(Dense(hp.Int('dense_2', min_value=64, max_value=512, step=64),
+                                activation='relu',
+                                kernel_regularizer=l2(hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
+            cnn_model.add(Dense(10, activation='softmax'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            cnn_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+            return cnn_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_cv_cnn_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='image-classification')
+
+        tuner.search(x_train, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train, y_train, epochs=epochs, validation_data=(x_val, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
+
 
 class ModelBuilder:
     def __init__(self):
         pass
 
+    # 1. Tabular Data:
     @staticmethod
     def build_fit_tabular_svm(x_train, y_train, kernel: str, gamma: str, c: float, rand_state: int):
         """Function to build and fit Support Vector Machine."""
@@ -348,6 +402,35 @@ class ModelBuilder:
                      batch_size=batch_size,
                      drop_last=False)
         return tb_model
+
+    @staticmethod
+    def build_fit_tabular_mlp(x_train, x_val, y_train, y_val, input_shape, dense_1: int, dense_2: int,
+                              dense_1_l2: float, dense_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
+                              learning_rate: float, loss: str, patience: int, epochs: int, batch_size: int):
+        """Function to build, compile and fit MLP Model. It returns Model and History."""
+        # Build MLP Model:
+        mlp_model = Sequential()
+        mlp_model.add(Dense(dense_1,
+                            input_shape=input_shape,
+                            activation='relu',
+                            kernel_regularizer=l2(dense_1_l2)))
+        mlp_model.add(layers.Dropout(dropout_rate_1))
+        mlp_model.add(Dense(dense_2,
+                            activation='relu',
+                            kernel_regularizer=l2(dense_2_l2)))
+        mlp_model.add(layers.Dropout(dropout_rate_2))
+        mlp_model.add(Dense(1, activation='sigmoid'))
+
+        # Compile the Model:
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        mlp_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+
+        # Fitting the Model:
+        history = mlp_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
+                                callbacks=[early_stop])
+        return mlp_model, history
 
     @staticmethod
     def build_fit_tabular_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
@@ -404,10 +487,6 @@ class ModelBuilder:
         lstm_model.add(LSTM(units=int(lstm_2),
                             kernel_regularizer=l2(lstm_2_l2)))
         lstm_model.add(Dropout(dropout_rate_2))
-        ''' An Additional dense layer:
-        lstm_model.add(Dense(dense_units,
-                             activation='relu',
-                             kernel_regularizer=l2(dense_l2)))'''
         lstm_model.add(Dense(1, activation='sigmoid'))
 
         # Compile the Model:
@@ -464,34 +543,46 @@ class ModelBuilder:
                                  callbacks=[early_stop])
         return crnn_model, history
 
+    # 2. Computer Vision:
     @staticmethod
-    def build_fit_tabular_mlp(x_train, x_val, y_train, y_val, input_shape, dense_1: int, dense_2: int,
-                              dense_1_l2: float, dense_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
-                              learning_rate: float, loss: str, patience: int, epochs: int, batch_size: int):
-        """Function to build, compile and fit MLP Model. It returns Model and History."""
-        # Build MLP Model:
-        mlp_model = Sequential()
-        mlp_model.add(Dense(dense_1,
-                            input_shape=input_shape,
+    def build_fit_cv_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
+                         dense_1: int, dense_2: int, filter_1_l2: float, filter_2_l2: float,
+                         dense_1_l2: float, dense_2_l2: float, dropout_rate: float, learning_rate: float,
+                         loss: str, patience: int, epochs: int, batch_size: int):
+        """Function to build, compile and fit 2D-CNN Model. It returns Model and History."""
+        # Build 2D-CNN Model:
+        cnn_model = Sequential()
+        cnn_model.add(Conv2D(filters=filter_1,
+                             kernel_size=(3, 3),
+                             activation='relu',
+                             input_shape=input_shape,
+                             kernel_regularizer=l2(filter_1_l2)))
+        cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+        cnn_model.add(Conv2D(filters=filter_2,
+                             kernel_size=(3, 3),
+                             activation='relu',
+                             kernel_regularizer=l2(filter_2_l2)))
+        cnn_model.add(MaxPooling2D(pool_size=(2, 2)))
+        cnn_model.add(Flatten())
+        cnn_model.add(Dense(dense_1,
                             activation='relu',
                             kernel_regularizer=l2(dense_1_l2)))
-        mlp_model.add(layers.Dropout(dropout_rate_1))
-        mlp_model.add(Dense(dense_2,
+        cnn_model.add(Dropout(dropout_rate))
+        cnn_model.add(Dense(dense_2,
                             activation='relu',
                             kernel_regularizer=l2(dense_2_l2)))
-        mlp_model.add(layers.Dropout(dropout_rate_2))
-        mlp_model.add(Dense(1, activation='sigmoid'))
+        cnn_model.add(Dense(1, activation='sigmoid'))
 
         # Compile the Model:
         optimizer = optimizers.Adam(learning_rate=learning_rate)
-        mlp_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+        cnn_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
         early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
 
         # Fitting the Model:
-        history = mlp_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
+        history = cnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
                                 callbacks=[early_stop])
-        return mlp_model, history
+        return cnn_model, history
 
 
 # 2. Class for calculating Predictions and evaluating Model:
