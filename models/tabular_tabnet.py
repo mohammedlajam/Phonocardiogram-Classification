@@ -241,6 +241,7 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         mlflow.log_param('n_ind', best_hp_folds.iloc[0]['n_independent'])
         mlflow.log_param('n_shared', best_hp_folds.iloc[0]['n_shared'])
         mlflow.log_param('learning_rate', best_hp_folds.iloc[0]['learning_rate'])
+        mlflow.log_param('weight_decay', best_hp_folds.iloc[0]['weight_decay'])
         mlflow.log_param('mask_type', best_hp_folds.iloc[0]['mask_type'])
         mlflow.log_param('epochs', c.TB_TABNET_EPOCHS)
         mlflow.log_param('patience', c.TB_TABNET_PATIENCE)
@@ -248,19 +249,19 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
 
         # Log the Matrices (Evaluation):
         # Mean of Matrices:
-        mlflow.log_metric('Threshold', mean_threshold)
-        mlflow.log_metric('Accuracy', mean_accuracy)
-        mlflow.log_metric('Precision', mean_precision)
-        mlflow.log_metric('Recall', mean_recall)
-        mlflow.log_metric('F1_Score', mean_f1_score)
-        mlflow.log_metric('Sensitivity', mean_sensitivity)
-        mlflow.log_metric('Specificity', mean_specificity)
-        mlflow.log_metric('TN', mean_tn)
-        mlflow.log_metric('FP', mean_fp)
-        mlflow.log_metric('FN', mean_fn)
-        mlflow.log_metric('TP', mean_tp)
-        mlflow.log_metric('ROC_AUC', mean_roc_auc)
-        mlflow.log_metric('AUC_Score', mean_auc_score)
+        mlflow.log_metric('mean_threshold', mean_threshold)
+        mlflow.log_metric('mean_accuracy', mean_accuracy)
+        mlflow.log_metric('mean_precision', mean_precision)
+        mlflow.log_metric('mean_recall', mean_recall)
+        mlflow.log_metric('mean_f1_score', mean_f1_score)
+        mlflow.log_metric('mean_sensitivity', mean_sensitivity)
+        mlflow.log_metric('mean_specificity', mean_specificity)
+        mlflow.log_metric('mean_tn', mean_tn)
+        mlflow.log_metric('mean_fp', mean_fp)
+        mlflow.log_metric('mean_fn', mean_fn)
+        mlflow.log_metric('mean_tp', mean_tp)
+        mlflow.log_metric('mean_roc_auc', mean_roc_auc)
+        mlflow.log_metric('mean_auc_score', mean_auc_score)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -424,6 +425,7 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         mlflow.log_param('n_ind', c.TB_TABNET_N_IND)
         mlflow.log_param('n_shared', c.TB_TABNET_N_SHARED)
         mlflow.log_param('learning_rate', c.TB_TABNET_LEARNING_RATE)
+        mlflow.log_param('weight_decay', c.TB_TABNET_WEIGHT_DECAY)
         mlflow.log_param('mask_type', c.TB_TABNET_MASK_TYPE)
         mlflow.log_param('epochs', c.TB_TABNET_EPOCHS)
         mlflow.log_param('patience', c.TB_TABNET_PATIENCE)
@@ -491,7 +493,7 @@ if __name__ == "__main__":
     # Loading Cross Validation Folds:
     X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds()
 
-    if c.TB_LSTM_AUTO_HP:
+    if c.TB_TABNET_AUTO_HP:
         # Tune the Hyper-Parameters:
         BEST_HP_FOLDS = _tune_hyper_parameters(x_train_folds=X_TRAIN_FOLDS,
                                                x_test_folds=X_TEST_FOLDS,
