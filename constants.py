@@ -31,6 +31,9 @@ TEST_SIZE = 0.2
 RANDOM_STATE = 42
 N_FOLDS = 6
 CORR_THRESHOLD = 0.8
+
+# 5.2. Computer Vision
+GRAY_SCALE = False
 IMG_WIDTH = 128
 IMG_LENGTH = 128
 IMG_CROSS_VALIDATION = True
@@ -56,7 +59,7 @@ TB_MLP_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.01
 TB_MLP_PATIENCE = 20
 TB_MLP_OPTIMIZER = 'adam'
 TB_MLP_LOSS = 'binary_crossentropy'
-TB_MLP_EPOCHS = 300
+TB_MLP_EPOCHS = 10
 TB_MLP_BATCH_SIZE = 32  # (HP-Tuning: 32) => best at 32
 
 # 6.1.2. 1D-CNN:
@@ -163,9 +166,88 @@ TB_SVM_C = 1.0  # (HP-Tuning: 10) => best at 1.0
 
 # 6.2. Computer Vision (Images):
 # 6.2.1. MLP:
+CV_MLP_AUTO_HP = True
+# Constants for Automatic Hyper-Parameters Tuning:
+CV_MLP_HP_MAX_TRIALS = 2  # 200
+CV_MLP_HP_EPOCHS = 1  # 5
+
+# Constants for Manual Hyper-Parameters Tuning:
+CV_MLP_DENSE_1 = 1000  # (HP-Tuning: 224) => best at 224
+CV_MLP_DENSE_2 = 1000  # (HP-Tuning: 416) => best at 416
+CV_MLP_DENSE_1_L2 = 0.0  # (HP-Tuning: 0.001) => best at 0.001
+CV_MLP_DENSE_2_L2 = 0.0  # (HP-Tuning: 0.0) => best at 0.0
+CV_MLP_DROPOUT_RATE_1 = 0.0  # (HP-Tuning: 0.1) => best at 0.1
+CV_MLP_DROPOUT_RATE_2 = 0.0  # (HP-Tuning: 0.3) => best at 0.3
+CV_MLP_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.01
+
+# Constants for Building and Fitting 1D-CNN Model:
+CV_MLP_PATIENCE = 20
+CV_MLP_OPTIMIZER = 'adam'
+CV_MLP_LOSS = 'binary_crossentropy'
+CV_MLP_EPOCHS = 10  # 300
+CV_MLP_BATCH_SIZE = 32  # (HP-Tuning: 32) => best at 32
 
 # 6.2.2. 2D-CNN:
+CV_CNN_AUTO_HP = False
+# Constants for Automatic Hyper-Parameters Tuning:
+CV_CNN_HP_MAX_TRIALS = 200
+CV_CNN_HP_EPOCHS = 5
 
-# 6.2.3. RNN-LSTM:
+# Constants for Manual Hyper-Parameters Tuning:
+CV_CNN_FILTER_1 = 192  # (HP-Tuning: 192) => best at 192
+CV_CNN_FILTER_2 = 160  # (HP-Tuning: 160) => best at 160
+CV_CNN_DENSE_1 = 192  # (HP-Tuning: 192) => best at 192
+CV_CNN_DENSE_2 = 256  # (HP-Tuning: 256) => best at 256
+CV_CNN_FILTER_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_FILTER_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_DENSE_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_DENSE_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_DROPOUT_RATE = 0.5  # (HP-Tuning: 0) => best at 0.5
+CV_CNN_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.001
 
-# 6.2.4. C-RNN:
+# Constants for Building and Fitting 1D-CNN Model:
+CV_CNN_PATIENCE = 20
+CV_CNN_OPTIMIZER = 'adam'
+CV_CNN_LOSS = 'binary_crossentropy'
+CV_CNN_EPOCHS = 3  # best at 200
+CV_CNN_BATCH_SIZE = 12000  # best at 10000
+
+# 6.2.3. ResNet50:
+# Constants for Manual Hyper-Parameters Tuning:
+CV_RN50_INCLUDE_TOP = False  # Always False
+CV_RN50_WEIGHTS = 'imagenet'
+CV_RN50_TRAINABLE = False
+CV_RN50_DENSE_1 = 64
+CV_RN50_DENSE_2 = 32
+CV_RN50_DENSE_1_L2 = 0.0
+CV_RN50_DENSE_2_L2 = 0.0
+CV_RN50_DROPOUT_RATE_2 = 0.0
+CV_RN50_DROPOUT_RATE_1 = 0.0
+CV_RN50_LEARNING_RATE = 0.001
+
+# Constants for Building and Fitting 1D-CNN Model:
+CV_RN50_PATIENCE = 5
+CV_RN50_OPTIMIZER = 'adam'
+CV_RN50_LOSS = 'binary_crossentropy'
+CV_RN50_EPOCHS = 100
+CV_RN50_BATCH_SIZE = 32
+
+# 6.2.4. VGG19:
+# Constants for Manual Hyper-Parameters Tuning:
+CV_VGG19_INCLUDE_TOP = False  # Always False
+CV_VGG19_WEIGHTS = 'imagenet'
+CV_VGG19_TRAINABLE = False
+CV_VGG19_DENSE_1 = 64
+CV_VGG19_DENSE_2 = 32
+CV_VGG19_DENSE_1_L2 = 0.0
+CV_VGG19_DENSE_2_L2 = 0.0
+CV_VGG19_DROPOUT_RATE_2 = 0.0
+CV_VGG19_DROPOUT_RATE_1 = 0.0
+CV_VGG19_LEARNING_RATE = 0.001
+
+# Constants for Building and Fitting 1D-CNN Model:
+CV_VGG19_PATIENCE = 5
+CV_VGG19_OPTIMIZER = 'adam'
+CV_VGG19_LOSS = 'binary_crossentropy'
+CV_VGG19_EPOCHS = 2
+CV_VGG19_BATCH_SIZE = 32
