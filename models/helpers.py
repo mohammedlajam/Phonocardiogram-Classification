@@ -15,15 +15,16 @@ import matplotlib.pyplot as plt
 
 from sklearn import svm
 from sklearn.model_selection import GridSearchCV
-import torch
 from pytorch_tabnet.tab_model import TabNetClassifier
 
+import tensorflow as tf
 from keras.models import Sequential
 from keras import layers
 from keras.layers import LSTM, Dense, Dropout, Conv1D, Conv2D, MaxPooling2D, MaxPooling1D, Flatten
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras import optimizers
+from keras.applications import ResNet50, VGG19
 from keras_tuner.tuners import BayesianOptimization
 import optuna
 import torch
@@ -34,6 +35,10 @@ from sklearn.metrics import roc_auc_score, confusion_matrix, precision_score, re
 
 import warnings
 warnings.filterwarnings('ignore')
+
+# disabling ssl:
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
 
 
 class HyperParametersTuner:
@@ -222,10 +227,6 @@ class HyperParametersTuner:
             lstm_model.add(LSTM(units=hp.Int('lstm_2', min_value=32, max_value=256, step=32),
                                 kernel_regularizer=l2(hp.Choice('lstm_2_l2', values=[0.0, 0.01, 0.001]))))
             lstm_model.add(Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
-            ''' An additional Dense Layer:
-            lstm_model.add(Dense(hp.Int('dense', min_value=32, max_value=256, step=32),
-                                 activation='relu',
-                                 kernel_regularizer=l2(hp.Choice('dense_l2', values=[0.0, 0.01, 0.001]))))'''
             lstm_model.add(Dense(1, activation='sigmoid'))
 
             # Tune the optimizer and learning rate
@@ -308,6 +309,57 @@ class HyperParametersTuner:
 
     # 2. Computer Vision:
     @staticmethod
+    def find_best_cv_mlp_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
+                            epochs: int, directory: str):
+        """Function to optimize Hyper-Parameters for MLP Model using Keras Tuner for image data."""
+
+        # Reshape input data to flatten the images
+        x_train_flat = x_train.reshape(x_train.shape[0], -1)
+        x_val_flat = x_val.reshape(x_val.shape[0], -1)
+        input_shape_flat = x_train_flat.shape[1:]
+
+        # Building the Model with Hyper-Parameters to be tuned:
+        def build_image_mlp_model(hp):
+            mlp_model = Sequential()
+
+            mlp_model.add(layers.Dense(hp.Int('dense_1', min_value=32, max_value=512, step=32),
+                                       activation='relu',
+                                       input_shape=input_shape_flat,
+                                       kernel_regularizer=l2(
+                                           hp.Choice('dense_1_l2', values=[0.0, 0.01, 0.001]))))
+            mlp_model.add(layers.Dropout(hp.Float('dropout_rate_1', min_value=0.0, max_value=0.5, step=0.1)))
+
+            mlp_model.add(layers.Dense(hp.Int('dense_2', min_value=32, max_value=512, step=32),
+                                       activation='relu',
+                                       kernel_regularizer=l2(
+                                           hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
+            mlp_model.add(layers.Dropout(hp.Float('dropout_rate_2', min_value=0.0, max_value=0.5, step=0.1)))
+
+            mlp_model.add(layers.Dense(1, activation='sigmoid'))
+
+            # Tune the optimizer and learning rate
+            optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
+            mlp_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+            return mlp_model
+
+        # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
+        tuner = BayesianOptimization(build_image_mlp_model,
+                                     objective='val_accuracy',
+                                     max_trials=max_trials,
+                                     directory=directory,
+                                     project_name='image-mlp-classification')
+
+        tuner.search(x_train_flat, y_train,
+                     epochs=epochs,
+                     validation_data=(x_val_flat, y_val))
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        best_model = tuner.hypermodel.build(best_hps)
+        history = best_model.fit(x_train_flat, y_train, epochs=epochs, validation_data=(x_val_flat, y_val))
+        val_accuracy = history.history['val_accuracy'][-1]
+        return best_hps.values, val_accuracy
+
+    @staticmethod
     def find_best_cv_cnn_hp(x_train, x_val, y_train, y_val, input_shape, max_trials: int,
                             epochs: int, directory: str):
         """Function to optimize Hyper-Parameters for 2D-CNN Model using Keras.tuner."""
@@ -334,11 +386,11 @@ class HyperParametersTuner:
             cnn_model.add(Dense(hp.Int('dense_2', min_value=64, max_value=512, step=64),
                                 activation='relu',
                                 kernel_regularizer=l2(hp.Choice('dense_2_l2', values=[0.0, 0.01, 0.001]))))
-            cnn_model.add(Dense(10, activation='softmax'))
+            cnn_model.add(Dense(1, activation='sigmoid'))
 
             # Tune the optimizer and learning rate
             optimizer = optimizers.Adam(learning_rate=hp.Choice('learning_rate', values=[0.001, 0.0001]))
-            cnn_model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
+            cnn_model.compile(optimizer=optimizer, loss='binary_crossentropy', metrics=['accuracy'])
             return cnn_model
 
         # Setting up the Model and Finding the best Hyper-Parameter combination based on Val_accuracy:
@@ -425,7 +477,11 @@ class ModelBuilder:
         optimizer = optimizers.Adam(learning_rate=learning_rate)
         mlp_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
-        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+        early_stop = EarlyStopping(monitor='val_accuracy',
+                                   patience=patience,
+                                   mode='max',
+                                   restore_best_weights=True,
+                                   verbose=True)
 
         # Fitting the Model:
         history = mlp_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
@@ -465,7 +521,11 @@ class ModelBuilder:
         optimizer = optimizers.Adam(learning_rate=learning_rate)
         cnn_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
-        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+        early_stop = EarlyStopping(monitor='val_accuracy',
+                                   patience=patience,
+                                   mode='max',
+                                   restore_best_weights=True,
+                                   verbose=True)
 
         # Fitting the Model:
         history = cnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
@@ -493,7 +553,11 @@ class ModelBuilder:
         optimizer = optimizers.Adam(learning_rate=learning_rate)
         lstm_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
-        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+        early_stop = EarlyStopping(monitor='val_accuracy',
+                                   patience=patience,
+                                   mode='max',
+                                   restore_best_weights=True,
+                                   verbose=True)
 
         # Fitting the Model:
         history = lstm_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
@@ -536,7 +600,11 @@ class ModelBuilder:
         optimizer = optimizers.Adam(learning_rate=learning_rate)
         crnn_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
-        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+        early_stop = EarlyStopping(monitor='val_accuracy',
+                                   patience=patience,
+                                   mode='max',
+                                   restore_best_weights=True,
+                                   verbose=True)
 
         # Fitting the Model:
         history = crnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
@@ -544,6 +612,46 @@ class ModelBuilder:
         return crnn_model, history
 
     # 2. Computer Vision:
+    @staticmethod
+    def build_fit_cv_mlp(x_train, x_val, y_train, y_val, input_shape, dense_1: int, dense_2: int,
+                         dense_1_l2: float, dense_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
+                         learning_rate: float, loss: str, patience: int, epochs: int, batch_size: int):
+        """Function to build, compile, and fit MLP Model for image data. It returns the model and history."""
+
+        # Reshape input data to flatten the images
+        x_train_flat = x_train.reshape(x_train.shape[0], -1)
+        x_val_flat = x_val.reshape(x_val.shape[0], -1)
+        input_shape_flat = x_train_flat.shape[1:]
+
+        # Build MLP Model:
+        mlp_model = Sequential()
+        mlp_model.add(layers.Dense(dense_1,
+                                   input_shape=input_shape_flat,
+                                   activation='relu',
+                                   kernel_regularizer=l2(dense_1_l2)))
+        mlp_model.add(layers.Dropout(dropout_rate_1))
+        mlp_model.add(layers.Dense(dense_2,
+                                   activation='relu',
+                                   kernel_regularizer=l2(dense_2_l2)))
+        mlp_model.add(layers.Dropout(dropout_rate_2))
+        mlp_model.add(layers.Dense(1, activation='sigmoid'))
+
+        # Compile the Model:
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        mlp_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stop = EarlyStopping(monitor='val_accuracy',
+                                   patience=patience,
+                                   mode='max',
+                                   restore_best_weights=True,
+                                   verbose=True)
+
+        # Fitting the Model:
+        history = mlp_model.fit(x_train_flat, y_train, epochs=epochs, batch_size=batch_size,
+                                validation_data=(x_val_flat, y_val),
+                                callbacks=[early_stop])
+        return mlp_model, history
+
     @staticmethod
     def build_fit_cv_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
                          dense_1: int, dense_2: int, filter_1_l2: float, filter_2_l2: float,
@@ -577,12 +685,99 @@ class ModelBuilder:
         optimizer = optimizers.Adam(learning_rate=learning_rate)
         cnn_model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
-        early_stop = EarlyStopping(monitor='val_accuracy', patience=patience, verbose=1, mode='max')
+        early_stop = EarlyStopping(monitor='val_accuracy',
+                                   patience=patience,
+                                   mode='max',
+                                   restore_best_weights=True,
+                                   verbose=True)
 
         # Fitting the Model:
         history = cnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
                                 callbacks=[early_stop])
         return cnn_model, history
+
+
+class PretrainedModel:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def build_fit_resnet50(train_dataset, val_dataset, input_shape, include_top: bool, resnet_weights: str,
+                           trainable: bool, dense_1: int, dense_2: int, dense_1_l2: float, dense_2_l2: float,
+                           dropout_rate_1: float, dropout_rate_2: float, learning_rate: float, loss: str,
+                           patience: int, epochs: int):
+        """Function to build, compile and fit ResNet50 Model. It returns Model and History."""
+        base_model = ResNet50(include_top=include_top,
+                              weights=resnet_weights,
+                              input_shape=input_shape)
+        base_model.trainable = trainable
+
+        model = Sequential()
+        model.add(base_model)
+        model.add(Flatten())
+        model.add(Dense(units=dense_1,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_1_l2)))
+        model.add(Dropout(dropout_rate_1))
+        model.add(Dense(units=dense_2,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_2_l2)))
+        model.add(Dropout(dropout_rate_2))
+        model.add(Dense(units=1, activation='sigmoid'))
+
+        # Compile the model
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stopping = EarlyStopping(monitor='val_accuracy',
+                                       patience=patience,
+                                       mode='max',
+                                       restore_best_weights=True,
+                                       verbose=True)
+
+        # Train the model
+        history = model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+
+        return model, history
+
+    @staticmethod
+    def build_fit_vgg19(train_dataset, val_dataset, input_shape, include_top: bool, vgg_weights: str,
+                        trainable: bool, dense_1: int, dense_2: int, dense_1_l2: float, dense_2_l2: float,
+                        dropout_rate_1: float, dropout_rate_2: float, learning_rate: float, loss: str,
+                        patience: int, epochs: int):
+        """Function to build, compile and fit VGG19 Model. It returns Model and History."""
+        base_model = VGG19(include_top=include_top,
+                           weights=vgg_weights,
+                           input_shape=input_shape)
+        base_model.trainable = trainable
+
+        model = Sequential()
+        model.add(base_model)
+        model.add(Flatten())
+        model.add(Dense(units=dense_1,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_1_l2)))
+        model.add(Dropout(dropout_rate_1))
+        model.add(Dense(units=dense_2,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_2_l2)))
+        model.add(Dropout(dropout_rate_2))
+        model.add(Dense(units=1, activation='sigmoid'))
+
+        # Compile the model
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stopping = EarlyStopping(monitor='val_accuracy',
+                                       patience=patience,
+                                       mode='max',
+                                       restore_best_weights=True,
+                                       verbose=True)
+
+        # Train the model
+        history = model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+
+        return model, history
 
 
 # 2. Class for calculating Predictions and evaluating Model:
@@ -593,6 +788,9 @@ class ModelEvaluator:
     @staticmethod
     def calculate_probabilities(model, x_test):
         """Function to predict the model and returns the predictions."""
+        # Reshape the input data to match the expected shape
+        #x_test = np.reshape(x_test, (x_test.shape[0], -1))
+
         y_prob = model.predict(x_test)
         return y_prob
 
