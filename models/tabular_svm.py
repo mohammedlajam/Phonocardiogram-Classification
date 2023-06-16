@@ -42,7 +42,7 @@ def _check_create_dir():
     """Function to check if 'cross_validation' directory exists in 'data' directory and create
     it if it is not existed."""
     try:
-        os.path.isdir(c.CROSS_VALIDATION_PATH)
+        os.path.isdir(f'{c.PROCESSED_DATA_PATH}/tabular')
     except FileNotFoundError:
         print("Directory does not exist!")
     except Exception as e:
@@ -54,13 +54,13 @@ def _check_create_dir():
 def _load_cv_folds():
     """Function to load Cross Validation Folds from local machine."""
     try:
-        with open(f'{c.CROSS_VALIDATION_PATH}/selected_features/x_train_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/tabular/selected_features/x_train_folds.pkl', 'rb') as f:
             x_train_folds = pickle.load(f)
-        with open(f'{c.CROSS_VALIDATION_PATH}/selected_features/x_test_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/tabular/selected_features/x_test_folds.pkl', 'rb') as f:
             x_test_folds = pickle.load(f)
-        with open(f'{c.CROSS_VALIDATION_PATH}/selected_features/y_train_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/tabular/selected_features/y_train_folds.pkl', 'rb') as f:
             y_train_folds = pickle.load(f)
-        with open(f'{c.CROSS_VALIDATION_PATH}/selected_features/y_test_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/tabular/selected_features/y_test_folds.pkl', 'rb') as f:
             y_test_folds = pickle.load(f)
     except FileNotFoundError:
         print("Error: One or more files not found")
