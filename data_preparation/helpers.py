@@ -380,14 +380,18 @@ class FeatureEngineeringCV:
         return image_fold, label_fold
 
     @staticmethod
-    def balance_images(images, labels, rand_state: int):
+    def balance_images(images, labels, rand_state: int, gray_scale: bool):
         """Function to balance images using SMOTE technique."""
         reshaped_images = images.reshape(images.shape[0], -1)
         smote = SMOTE(random_state=rand_state)
-
-        images_resampled, labels_resampled = smote.fit_resample(reshaped_images, labels)
-        # Reshape the resampled data back to the original shape
-        images_resampled = images_resampled.reshape((-1, 128, 128))
+        if gray_scale:
+            images_resampled, labels_resampled = smote.fit_resample(reshaped_images, labels)
+            # Reshape the resampled data back to the original shape
+            images_resampled = images_resampled.reshape((-1, 128, 128))
+        else:
+            reshaped_images_resampled, labels_resampled = smote.fit_resample(reshaped_images, labels)
+            # Reshape the resampled data back to the original shape
+            images_resampled = reshaped_images_resampled.reshape((-1, 128, 128, 3))
         return images_resampled, labels_resampled
 
     @staticmethod
