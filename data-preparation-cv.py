@@ -46,13 +46,23 @@ def _load_images_labels(rep_type: str):
 
         images = []
         labels = []
-        for index, row in references.iterrows():
-            img_ref = row['image_ref'] + '.png'  # Adding file extension
-            img_path = os.path.join(image_dir, img_ref)
-            image = cv2.imread(img_path)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            images.append(image)
-            labels.append(row['class'])
+        # Converting to Gray Scale (One-Channel):
+        if c.GRAY_SCALE:
+            for index, row in references.iterrows():
+                img_ref = row['image_ref'] + '.png'  # Adding file extension
+                img_path = os.path.join(image_dir, img_ref)
+                image = cv2.imread(img_path)
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+                images.append(image)
+                labels.append(row['class'])
+        # Keeping the images in 3 channels:
+        else:
+            for index, row in references.iterrows():
+                img_ref = row['image_ref'] + '.png'  # Adding file extension
+                img_path = os.path.join(image_dir, img_ref)
+                image = cv2.imread(img_path)
+                images.append(image)
+                labels.append(row['class'])
 
         # Convert all -1 labels to 0:
         labels = [0 if label == -1 else label for label in labels]
@@ -102,7 +112,10 @@ def _save_as_pickle_files(x_train, x_test, y_train, y_test, rep_type: str, cross
         print(e)
     else:
         if cross_validation:
-            directory = f'data/processed_data/images/{rep_type}/kfold_cv'
+            if c.GRAY_SCALE:
+                directory = f'data/processed_data/images/{rep_type}/kfold_cv/gray_scale'
+            else:
+                directory = f'data/processed_data/images/{rep_type}/kfold_cv/rgb'
             os.makedirs(directory, exist_ok=True)
             files = [('x_train_folds.pkl', x_train), ('x_test_folds.pkl', x_test),
                      ('y_train_folds.pkl', y_train), ('y_test_folds.pkl', y_test)]
@@ -111,7 +124,10 @@ def _save_as_pickle_files(x_train, x_test, y_train, y_test, rep_type: str, cross
                 with open(file_path, 'wb') as f:
                     pickle.dump(data, f)
         else:
-            directory = f'data/processed_data/images/{rep_type}/holdout_cv'
+            if c.GRAY_SCALE:
+                directory = f'data/processed_data/images/{rep_type}/holdout_cv/gray_scale'
+            else:
+                directory = f'data/processed_data/images/{rep_type}/holdout_cv/rgb'
             os.makedirs(directory, exist_ok=True)
             files = [('x_train.pkl', x_train), ('x_test.pkl', x_test), ('y_train.pkl', y_train), ('y_test.pkl', y_test)]
             for filename, data in files:
@@ -128,14 +144,14 @@ if __name__ == "__main__":
     # Converting IMAGES and LABELS into Numpy arrays:
     IMAGES = np.array(IMAGES, dtype=np.float32)
     LABELS = np.array(LABELS)
-
+    '''
     # 2. Resizing the images to 128x128:
     RESIZED_IMAGES = FeatureEngineeringCV.resize_images(images=IMAGES, new_width=c.IMG_WIDTH, new_height=c.IMG_LENGTH)
-
+    '''
     # 3. Splitting Images to train, test sets:
     if c.IMG_CROSS_VALIDATION:
         # 3.1. K-Fold Cross-Validation (6 Folds):
-        X_TRAIN_FOLDS, Y_TRAIN_FOLDS, X_TEST_FOLDS, Y_TEST_FOLDS = _execute_cross_validation(images=RESIZED_IMAGES,
+        X_TRAIN_FOLDS, Y_TRAIN_FOLDS, X_TEST_FOLDS, Y_TEST_FOLDS = _execute_cross_validation(images=IMAGES,
                                                                                              labels=LABELS,
                                                                                              references=REFERENCES)
 
@@ -145,10 +161,11 @@ if __name__ == "__main__":
         for fold_index in range(len(X_TRAIN_FOLDS)):
             X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED = FeatureEngineeringCV.balance_images(images=X_TRAIN_FOLDS[fold_index],
                                                                                        labels=Y_TRAIN_FOLDS[fold_index],
-                                                                                       rand_state=c.RANDOM_STATE)
+                                                                                       rand_state=c.RANDOM_STATE,
+                                                                                       gray_scale=c.GRAY_SCALE)
             X_TRAIN_FOLDS_RESAMPLED.append(X_TRAIN_RESAMPLED)
             Y_TRAIN_FOLDS_RESAMPLED.append(Y_TRAIN_RESAMPLED)
-
+        '''
         # 5.2 Normalizing images:
         X_TRAIN_FOLDS_NORMALIZED = []
         X_TEST_FOLDS_NORMALIZED = []
@@ -157,10 +174,10 @@ if __name__ == "__main__":
             X_TEST_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TEST_FOLDS[fold_index])
             X_TRAIN_FOLDS_NORMALIZED.append(X_TRAIN_NORMALIZED)
             X_TEST_FOLDS_NORMALIZED.append(X_TEST_NORMALIZED)
-
+        '''
         # Saving folds in form of Pickle file:
-        _save_as_pickle_files(x_train=X_TRAIN_FOLDS_NORMALIZED,
-                              x_test=X_TEST_FOLDS_NORMALIZED,
+        _save_as_pickle_files(x_train=X_TRAIN_FOLDS_RESAMPLED,
+                              x_test=X_TEST_FOLDS,
                               y_train=Y_TRAIN_FOLDS_RESAMPLED,
                               y_test=Y_TEST_FOLDS,
                               rep_type='scalogram',
@@ -168,7 +185,7 @@ if __name__ == "__main__":
 
     else:
         # 3.2. Holdout Cross-Validation (One-Fold):
-        X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = FeatureEngineeringCV.split_images(images=RESIZED_IMAGES,
+        X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = FeatureEngineeringCV.split_images(images=IMAGES,
                                                                              labels=LABELS,
                                                                              references=REFERENCES,
                                                                              test_size=c.TEST_SIZE,
@@ -177,7 +194,8 @@ if __name__ == "__main__":
         # 4.2 Balancing images:
         X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED = FeatureEngineeringCV.balance_images(images=X_TRAIN,
                                                                                    labels=Y_TRAIN,
-                                                                                   rand_state=c.RANDOM_STATE)
+                                                                                   rand_state=c.RANDOM_STATE,
+                                                                                   gray_scale=c.GRAY_SCALE)
 
         # 5.2 Normalizing images:
         X_TRAIN_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TRAIN_RESAMPLED)
