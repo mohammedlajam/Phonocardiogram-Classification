@@ -393,6 +393,7 @@ if __name__ == "__main__":
 
     # 1.2. Denormalization:
     DENORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='denormalized', version=2)
+
     DENORMALIZED_FEATURES = _extract_numeric_features(audio_signals=DENORMALIZED_SIGNALS)
     DENORMALIZED_FEATURES = DENORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=DENORMALIZED_FEATURES, csv_version=1, normalization='denormalized')

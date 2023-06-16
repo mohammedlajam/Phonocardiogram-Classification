@@ -436,7 +436,7 @@ class TimeFrequencyDomainFeatures:
         elif save:
             if img_ref is None:
                 raise ValueError("'img_ref' argument must be specified.")
-            figure = plt.figure(figsize=(15, 5))
+            figure = plt.figure(figsize=(1.28, 1.28))
             ax = plt.axes()
             ax.set_axis_off()
             plt.imshow(abs(coefficients), extent=[0, 200, 30, 1], interpolation='bilinear',
