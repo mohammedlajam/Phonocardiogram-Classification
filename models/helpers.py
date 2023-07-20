@@ -24,7 +24,7 @@ from keras.layers import LSTM, Dense, Dropout, Conv1D, Conv2D, MaxPooling2D, Max
 from keras.regularizers import l2
 from keras.callbacks import EarlyStopping
 from keras import optimizers
-from keras.applications import ResNet50, VGG19
+from keras.applications import ResNet50, VGG19, InceptionV3, InceptionResNetV2
 from keras_tuner.tuners import BayesianOptimization
 import optuna
 import torch
@@ -653,10 +653,10 @@ class ModelBuilder:
         return mlp_model, history
 
     @staticmethod
-    def build_fit_cv_cnn(x_train, x_val, y_train, y_val, input_shape, filter_1: int, filter_2: int,
+    def build_fit_cv_cnn(train_dataset, val_dataset, input_shape, filter_1: int, filter_2: int,
                          dense_1: int, dense_2: int, filter_1_l2: float, filter_2_l2: float,
                          dense_1_l2: float, dense_2_l2: float, dropout_rate: float, learning_rate: float,
-                         loss: str, patience: int, epochs: int, batch_size: int):
+                         loss: str, patience: int, epochs: int):
         """Function to build, compile and fit 2D-CNN Model. It returns Model and History."""
         # Build 2D-CNN Model:
         cnn_model = Sequential()
@@ -692,8 +692,7 @@ class ModelBuilder:
                                    verbose=True)
 
         # Fitting the Model:
-        history = cnn_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
-                                callbacks=[early_stop])
+        history = cnn_model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stop])
         return cnn_model, history
 
 
@@ -749,6 +748,84 @@ class PretrainedModel:
         base_model = VGG19(include_top=include_top,
                            weights=vgg_weights,
                            input_shape=input_shape)
+        base_model.trainable = trainable
+
+        model = Sequential()
+        model.add(base_model)
+        model.add(Flatten())
+        model.add(Dense(units=dense_1,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_1_l2)))
+        model.add(Dropout(dropout_rate_1))
+        model.add(Dense(units=dense_2,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_2_l2)))
+        model.add(Dropout(dropout_rate_2))
+        model.add(Dense(units=1, activation='sigmoid'))
+
+        # Compile the model
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stopping = EarlyStopping(monitor='val_accuracy',
+                                       patience=patience,
+                                       mode='max',
+                                       restore_best_weights=True,
+                                       verbose=True)
+
+        # Train the model
+        history = model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+
+        return model, history
+
+    @staticmethod
+    def build_fit_inception(train_dataset, val_dataset, input_shape, include_top: bool, inception_weights: str,
+                            trainable: bool, dense_1: int, dense_2: int, dense_1_l2: float, dense_2_l2: float,
+                            dropout_rate_1: float, dropout_rate_2: float, learning_rate: float, loss: str,
+                            patience: int, epochs: int):
+        """Function to build, compile and fit InceptionV3 Model. It returns Model and History."""
+        base_model = InceptionV3(include_top=include_top,
+                                 weights=inception_weights,
+                                 input_shape=input_shape)
+        base_model.trainable = trainable
+
+        model = Sequential()
+        model.add(base_model)
+        model.add(Flatten())
+        model.add(Dense(units=dense_1,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_1_l2)))
+        model.add(Dropout(dropout_rate_1))
+        model.add(Dense(units=dense_2,
+                        activation='relu',
+                        kernel_regularizer=l2(dense_2_l2)))
+        model.add(Dropout(dropout_rate_2))
+        model.add(Dense(units=1, activation='sigmoid'))
+
+        # Compile the model
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        early_stopping = EarlyStopping(monitor='val_accuracy',
+                                       patience=patience,
+                                       mode='max',
+                                       restore_best_weights=True,
+                                       verbose=True)
+
+        # Train the model
+        history = model.fit(train_dataset, epochs=epochs, validation_data=val_dataset, callbacks=[early_stopping])
+
+        return model, history
+
+    @staticmethod
+    def build_fit_inceptionresnet(train_dataset, val_dataset, input_shape, include_top: bool,
+                                  inceptionresnet_weights: str, trainable: bool, dense_1: int, dense_2: int,
+                                  dense_1_l2: float, dense_2_l2: float, dropout_rate_1: float, dropout_rate_2: float,
+                                  learning_rate: float, loss: str, patience: int, epochs: int):
+        """Function to build, compile and fit InceptionResNetV2 Model. It returns Model and History."""
+        base_model = InceptionResNetV2(include_top=include_top,
+                                       weights=inceptionresnet_weights,
+                                       input_shape=input_shape)
         base_model.trainable = trainable
 
         model = Sequential()
