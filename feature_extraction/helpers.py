@@ -311,7 +311,7 @@ class TimeFrequencyDomainFeatures:
         elif save:
             if img_ref is None:
                 raise ValueError("'img_ref' argument must be specified")
-            figure = plt.figure(figsize=(15, 5))
+            figure = plt.figure(figsize=(1.28, 1.28))
             ax = plt.axes()
             ax.set_axis_off()
             librosa.display.specshow(signal_stft_log, sr=self.sr, hop_length=self.hop_size, x_axis='time', y_axis='log')
@@ -340,7 +340,7 @@ class TimeFrequencyDomainFeatures:
         elif save:
             if img_ref is None:
                 raise ValueError("'img_ref' argument must be specified")
-            figure = plt.figure(figsize=(15, 5))
+            figure = plt.figure(figsize=(1.28, 1.28))
             ax = plt.axes()
             ax.set_axis_off()
             librosa.display.specshow(signal_mel_log, sr=self.sr, hop_length=self.hop_size, x_axis='time', y_axis='mel')
@@ -363,7 +363,7 @@ class TimeFrequencyDomainFeatures:
             elif save:
                 if img_ref is None:
                     raise ValueError("'img_ref' argument must be specified")
-                figure = plt.figure(figsize=(15, 5))
+                figure = plt.figure(figsize=(1.28, 1.28))
                 ax = plt.axes()
                 ax.set_axis_off()
                 librosa.display.specshow(mfccs, x_axis='time', sr=self.sr)
@@ -383,7 +383,7 @@ class TimeFrequencyDomainFeatures:
             elif save:
                 if img_ref is None:
                     raise ValueError("'img_ref' argument must be specified")
-                figure = plt.figure(figsize=(15, 5))
+                figure = plt.figure(figsize=(1.28, 1.28))
                 ax = plt.axes()
                 ax.set_axis_off()
                 librosa.display.specshow(delta_1, x_axis='time', sr=self.sr)
@@ -403,7 +403,7 @@ class TimeFrequencyDomainFeatures:
             elif save:
                 if img_ref is None:
                     raise ValueError("'img_ref' argument must be specified")
-                figure = plt.figure(figsize=(15, 5))
+                figure = plt.figure(figsize=(1.28, 1.28))
                 ax = plt.axes()
                 ax.set_axis_off()
                 librosa.display.specshow(delta_2, x_axis='time', sr=self.sr)

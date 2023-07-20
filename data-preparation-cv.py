@@ -139,7 +139,7 @@ def _save_as_pickle_files(x_train, x_test, y_train, y_test, rep_type: str, cross
 
 if __name__ == "__main__":
     # 1. Loading Images and its Labels:
-    IMAGES, LABELS, REFERENCES = _load_images_labels(rep_type='scalogram')
+    IMAGES, LABELS, REFERENCES = _load_images_labels(rep_type='spectrogram')
 
     # Converting IMAGES and LABELS into Numpy arrays:
     IMAGES = np.array(IMAGES, dtype=np.float32)
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         X_TRAIN_FOLDS, Y_TRAIN_FOLDS, X_TEST_FOLDS, Y_TEST_FOLDS = _execute_cross_validation(images=IMAGES,
                                                                                              labels=LABELS,
                                                                                              references=REFERENCES)
-
+        '''
         # 4.1 Balancing images:
         X_TRAIN_FOLDS_RESAMPLED = []
         Y_TRAIN_FOLDS_RESAMPLED = []
@@ -165,7 +165,7 @@ if __name__ == "__main__":
                                                                                        gray_scale=c.GRAY_SCALE)
             X_TRAIN_FOLDS_RESAMPLED.append(X_TRAIN_RESAMPLED)
             Y_TRAIN_FOLDS_RESAMPLED.append(Y_TRAIN_RESAMPLED)
-        '''
+        
         # 5.2 Normalizing images:
         X_TRAIN_FOLDS_NORMALIZED = []
         X_TEST_FOLDS_NORMALIZED = []
@@ -176,11 +176,11 @@ if __name__ == "__main__":
             X_TEST_FOLDS_NORMALIZED.append(X_TEST_NORMALIZED)
         '''
         # Saving folds in form of Pickle file:
-        _save_as_pickle_files(x_train=X_TRAIN_FOLDS_RESAMPLED,
+        _save_as_pickle_files(x_train=X_TRAIN_FOLDS,
                               x_test=X_TEST_FOLDS,
-                              y_train=Y_TRAIN_FOLDS_RESAMPLED,
+                              y_train=Y_TRAIN_FOLDS,
                               y_test=Y_TEST_FOLDS,
-                              rep_type='scalogram',
+                              rep_type='spectrogram',
                               cross_validation=True)
 
     else:
@@ -206,5 +206,5 @@ if __name__ == "__main__":
                               x_test=X_TEST_NORMALIZED,
                               y_train=Y_TRAIN_RESAMPLED,
                               y_test=Y_TEST,
-                              rep_type='scalogram',
+                              rep_type='spectrogram',
                               cross_validation=False)

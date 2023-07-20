@@ -383,20 +383,20 @@ def _extract_save_images(audio_signals, references, rep_type: str):
 
 if __name__ == "__main__":
     _check_create_dir()
-
+    '''
     # 1. Extract Numeric Features:
     # 1.1. Normalization:
     NORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='normalized', version=2)
     NORMALIZED_FEATURES = _extract_numeric_features(audio_signals=NORMALIZED_SIGNALS)
     NORMALIZED_FEATURES = NORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=NORMALIZED_FEATURES, csv_version=1, normalization='normalized')
-
+    '''
     # 1.2. Denormalization:
     DENORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='denormalized', version=2)
-
+    '''
     DENORMALIZED_FEATURES = _extract_numeric_features(audio_signals=DENORMALIZED_SIGNALS)
     DENORMALIZED_FEATURES = DENORMALIZED_FEATURES.join(REFERENCES)
     _save_features(dataframe=DENORMALIZED_FEATURES, csv_version=1, normalization='denormalized')
-
+    '''
     # 2. Extract Images:
-    _extract_save_images(audio_signals=DENORMALIZED_SIGNALS, references=REFERENCES, rep_type='scalogram')
+    _extract_save_images(audio_signals=DENORMALIZED_SIGNALS, references=REFERENCES, rep_type='spectrogram')
