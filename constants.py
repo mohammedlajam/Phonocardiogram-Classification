@@ -194,60 +194,100 @@ CV_CNN_HP_MAX_TRIALS = 200
 CV_CNN_HP_EPOCHS = 5
 
 # Constants for Manual Hyper-Parameters Tuning:
-CV_CNN_FILTER_1 = 192  # (HP-Tuning: 192) => best at 192
-CV_CNN_FILTER_2 = 160  # (HP-Tuning: 160) => best at 160
-CV_CNN_DENSE_1 = 192  # (HP-Tuning: 192) => best at 192
-CV_CNN_DENSE_2 = 256  # (HP-Tuning: 256) => best at 256
-CV_CNN_FILTER_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
-CV_CNN_FILTER_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
-CV_CNN_DENSE_1_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
-CV_CNN_DENSE_2_L2 = 0.001  # (HP-Tuning: 0) => best at 0.001
-CV_CNN_DROPOUT_RATE = 0.5  # (HP-Tuning: 0) => best at 0.5
+CV_CNN_FILTER_1 = 256  # (HP-Tuning: 192) => best at 192
+CV_CNN_FILTER_2 = 128  # (HP-Tuning: 160) => best at 160
+CV_CNN_DENSE_1 = 128  # (HP-Tuning: 192) => best at 192
+CV_CNN_DENSE_2 = 64  # (HP-Tuning: 256) => best at 256
+CV_CNN_FILTER_1_L2 = 0.0  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_FILTER_2_L2 = 0.0  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_DENSE_1_L2 = 0.0  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_DENSE_2_L2 = 0.0  # (HP-Tuning: 0) => best at 0.001
+CV_CNN_DROPOUT_RATE = 0.0  # (HP-Tuning: 0) => best at 0.5
 CV_CNN_LEARNING_RATE = 0.001  # (HP-Tuning: 0.001) => best at 0.001
 
 # Constants for Building and Fitting 1D-CNN Model:
-CV_CNN_PATIENCE = 20
+CV_CNN_PATIENCE = 5
 CV_CNN_OPTIMIZER = 'adam'
 CV_CNN_LOSS = 'binary_crossentropy'
-CV_CNN_EPOCHS = 3  # best at 200
-CV_CNN_BATCH_SIZE = 12000  # best at 10000
+CV_CNN_EPOCHS = 1
+CV_CNN_BATCH_SIZE = 32
 
 # 6.2.3. ResNet50:
 # Constants for Manual Hyper-Parameters Tuning:
 CV_RN50_INCLUDE_TOP = False  # Always False
 CV_RN50_WEIGHTS = 'imagenet'
 CV_RN50_TRAINABLE = False
-CV_RN50_DENSE_1 = 64
-CV_RN50_DENSE_2 = 32
-CV_RN50_DENSE_1_L2 = 0.0
-CV_RN50_DENSE_2_L2 = 0.0
-CV_RN50_DROPOUT_RATE_2 = 0.0
-CV_RN50_DROPOUT_RATE_1 = 0.0
-CV_RN50_LEARNING_RATE = 0.001
+CV_RN50_DENSE_1 = 256  # best at 256
+CV_RN50_DENSE_2 = 128  # best at 128
+CV_RN50_DENSE_1_L2 = 0.0  # best at 0.0
+CV_RN50_DENSE_2_L2 = 0.0  # best at 0.0
+CV_RN50_DROPOUT_RATE_1 = 0.0  # best at 0.0
+CV_RN50_DROPOUT_RATE_2 = 0.0  # best at 0.0
+CV_RN50_LEARNING_RATE = 0.001  # best at 0.001
 
-# Constants for Building and Fitting 1D-CNN Model:
+# Constants for Building and Fitting ResNet50:
 CV_RN50_PATIENCE = 5
 CV_RN50_OPTIMIZER = 'adam'
 CV_RN50_LOSS = 'binary_crossentropy'
-CV_RN50_EPOCHS = 100
-CV_RN50_BATCH_SIZE = 32
+CV_RN50_EPOCHS = 1
+CV_RN50_BATCH_SIZE = 32  # best at 32
 
 # 6.2.4. VGG19:
 # Constants for Manual Hyper-Parameters Tuning:
 CV_VGG19_INCLUDE_TOP = False  # Always False
 CV_VGG19_WEIGHTS = 'imagenet'
 CV_VGG19_TRAINABLE = False
-CV_VGG19_DENSE_1 = 64
-CV_VGG19_DENSE_2 = 32
-CV_VGG19_DENSE_1_L2 = 0.0
-CV_VGG19_DENSE_2_L2 = 0.0
-CV_VGG19_DROPOUT_RATE_2 = 0.0
-CV_VGG19_DROPOUT_RATE_1 = 0.0
-CV_VGG19_LEARNING_RATE = 0.001
+CV_VGG19_DENSE_1 = 1024  # Best at 1024
+CV_VGG19_DENSE_2 = 512  # Best at 512
+CV_VGG19_DENSE_1_L2 = 0.001  # Best at 0.001
+CV_VGG19_DENSE_2_L2 = 0.0  # Best at 0.0
+CV_VGG19_DROPOUT_RATE_1 = 0.0  # Best at 0.0
+CV_VGG19_DROPOUT_RATE_2 = 0.5  # Best at 0.5
+CV_VGG19_LEARNING_RATE = 0.001  # Best at 0.001
 
-# Constants for Building and Fitting 1D-CNN Model:
+# Constants for Building and Fitting VGG19 Model:
 CV_VGG19_PATIENCE = 5
 CV_VGG19_OPTIMIZER = 'adam'
 CV_VGG19_LOSS = 'binary_crossentropy'
-CV_VGG19_EPOCHS = 2
+CV_VGG19_EPOCHS = 1
 CV_VGG19_BATCH_SIZE = 32
+
+# 6.2.5. InceptionV3:
+# Constants for Manual Hyper-Parameters Tuning:
+CV_INCEPTION_INCLUDE_TOP = False  # Always False
+CV_INCEPTION_WEIGHTS = 'imagenet'
+CV_INCEPTION_TRAINABLE = True  # best at True
+CV_INCEPTION_DENSE_1 = 64  # Best at 64
+CV_INCEPTION_DENSE_2 = 32  # Best at 32
+CV_INCEPTION_DENSE_1_L2 = 0.001  # Best at 0.001
+CV_INCEPTION_DENSE_2_L2 = 0.0  # Best at 0.0
+CV_INCEPTION_DROPOUT_RATE_1 = 0.0  # Best at 0.0
+CV_INCEPTION_DROPOUT_RATE_2 = 0.5  # Best at 0.5
+CV_INCEPTION_LEARNING_RATE = 0.001  # Best at 0.001
+
+# Constants for Building and Fitting VGG19 Model:
+CV_INCEPTION_PATIENCE = 10
+CV_INCEPTION_OPTIMIZER = 'adam'
+CV_INCEPTION_LOSS = 'binary_crossentropy'
+CV_INCEPTION_EPOCHS = 100
+CV_INCEPTION_BATCH_SIZE = 32
+
+# 6.2.6. InceptionResNetV2:
+# Constants for Manual Hyper-Parameters Tuning:
+CV_INCEPTIONRESNET_INCLUDE_TOP = False  # Always False
+CV_INCEPTIONRESNET_WEIGHTS = 'imagenet'
+CV_INCEPTIONRESNET_TRAINABLE = True
+CV_INCEPTIONRESNET_DENSE_1 = 64  # Best at
+CV_INCEPTIONRESNET_DENSE_2 = 32  # Best at
+CV_INCEPTIONRESNET_DENSE_1_L2 = 0.0  # Best at
+CV_INCEPTIONRESNET_DENSE_2_L2 = 0.0  # Best at
+CV_INCEPTIONRESNET_DROPOUT_RATE_1 = 0.0  # Best at
+CV_INCEPTIONRESNET_DROPOUT_RATE_2 = 0.0  # Best at
+CV_INCEPTIONRESNET_LEARNING_RATE = 0.001  # Best at 0.001
+
+# Constants for Building and Fitting VGG19 Model:
+CV_INCEPTIONRESNET_PATIENCE = 5
+CV_INCEPTIONRESNET_OPTIMIZER = 'adam'
+CV_INCEPTIONRESNET_LOSS = 'binary_crossentropy'
+CV_INCEPTIONRESNET_EPOCHS = 100
+CV_INCEPTIONRESNET_BATCH_SIZE = 32
