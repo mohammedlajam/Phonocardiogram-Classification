@@ -56,16 +56,16 @@ def _check_create_dir():
         return None
 
 
-def _load_cv_folds():
+def _load_cv_folds(rep_type: str):
     """Function to load Cross Validation Folds from local machine."""
     try:
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/kfold_cv/rgb/x_train_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/x_train_folds.pkl', 'rb') as f:
             x_train_folds = pickle.load(f)
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/kfold_cv/rgb/x_test_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/x_test_folds.pkl', 'rb') as f:
             x_test_folds = pickle.load(f)
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/kfold_cv/rgb/y_train_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/y_train_folds.pkl', 'rb') as f:
             y_train_folds = pickle.load(f)
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/kfold_cv/rgb/y_test_folds.pkl', 'rb') as f:
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/y_test_folds.pkl', 'rb') as f:
             y_test_folds = pickle.load(f)
     except FileNotFoundError:
         print("Error: One or more files not found")
@@ -242,7 +242,7 @@ if __name__ == "__main__":
     _check_create_dir()
 
     # Loading dataset:
-    X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds()
+    X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds(rep_type='spectrogram')
     X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = X_TRAIN_FOLDS[0], X_TEST_FOLDS[0], Y_TRAIN_FOLDS[0], Y_TEST_FOLDS[0]
 
     # Building, Fitting and Evaluating ResNet50:
