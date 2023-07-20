@@ -47,7 +47,7 @@ def _check_create_dir():
     """Function to check if 'cross_validation' directory exists in 'data' directory and create
     it if it is not existed."""
     try:
-        os.path.isdir(f'{c.PROCESSED_DATA_PATH}/tabular')
+        os.path.isdir(f'{c.PROCESSED_DATA_PATH}/images')
     except FileNotFoundError:
         print("Directory does not exist!")
     except Exception as e:
@@ -56,23 +56,23 @@ def _check_create_dir():
         return None
 
 
-def _load_cv_folds():
+def _load_cv_folds(rep_type: str):
     """Function to load Cross Validation Folds from local machine."""
     try:
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/holdout_cv/rgb/x_train.pkl', 'rb') as f:
-            x_train = pickle.load(f)
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/holdout_cv/rgb/x_test.pkl', 'rb') as f:
-            x_test = pickle.load(f)
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/holdout_cv/rgb/y_train.pkl', 'rb') as f:
-            y_train = pickle.load(f)
-        with open(f'{c.PROCESSED_DATA_PATH}/images/scalogram/holdout_cv/rgb/y_test.pkl', 'rb') as f:
-            y_test = pickle.load(f)
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/x_train_folds.pkl', 'rb') as f:
+            x_train_folds = pickle.load(f)
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/x_test_folds.pkl', 'rb') as f:
+            x_test_folds = pickle.load(f)
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/y_train_folds.pkl', 'rb') as f:
+            y_train_folds = pickle.load(f)
+        with open(f'{c.PROCESSED_DATA_PATH}/images/{rep_type}/kfold_cv/rgb/y_test_folds.pkl', 'rb') as f:
+            y_test_folds = pickle.load(f)
     except FileNotFoundError:
         print("Error: One or more files not found")
     except Exception as e:
         print(f"Error: {e}")
     else:
-        return x_train, x_test, y_train, y_test
+        return x_train_folds, x_test_folds, y_train_folds, y_test_folds
 
 
 def _generate_val_set(x_train, x_test, y_train, y_test):
@@ -93,7 +93,7 @@ def _generate_val_set(x_train, x_test, y_train, y_test):
 
 def _run_evaluate_vgg19(x_train, x_test, y_train, y_test):
     """Function to run and evaluate VGG19 Model based on Manual adjustment of Parameters.
-    It returns all the Matrices, paramters and Artifacts into mlflow."""
+    It returns all the Matrices, parameters and Artifacts into mlflow."""
     with mlflow.start_run():
         # Splitting x_train into x_train and x_val:
         x_train, x_test, x_val, y_train, y_test, y_val = _generate_val_set(x_train=x_train,
@@ -129,6 +129,7 @@ def _run_evaluate_vgg19(x_train, x_test, y_train, y_test):
         # Saving the Model
         model_name = f"cv_vgg19_model"
         mlflow.sklearn.log_model(vgg19_model, model_name)
+        vgg19_model.save('vgg19_model.h5')
 
         # Plotting and saving Accuracy vs Epoch:
         fig, ax = plt.subplots(figsize=(6, 4))
@@ -242,7 +243,8 @@ if __name__ == "__main__":
     _check_create_dir()
 
     # Loading dataset:
-    X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = _load_cv_folds()
+    X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds(rep_type='spectrogram')
+    X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = X_TRAIN_FOLDS[0], X_TEST_FOLDS[0], Y_TRAIN_FOLDS[0], Y_TEST_FOLDS[0]
 
     # Building, Fitting and Evaluating VGG19:
     _run_evaluate_vgg19(x_train=X_TRAIN,
