@@ -127,9 +127,9 @@ def _run_evaluate_inceptionresnet(x_train, x_test, y_train, y_test):
                                                                                    epochs=c.CV_INCEPTIONRESNET_EPOCHS)
 
         # Saving the Model
-        model_name = f"cv_inception_model"
+        model_name = f"cv_inception_resnet_model"
         mlflow.sklearn.log_model(inceptionresnet_model, model_name)
-        inceptionresnet_model.save('cv_inception.h5')
+        inceptionresnet_model.save('cv_inception_resnet.h5')
 
         # Plotting and saving Accuracy vs Epoch:
         fig, ax = plt.subplots(figsize=(6, 4))

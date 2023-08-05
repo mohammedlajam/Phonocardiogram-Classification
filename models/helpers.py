@@ -920,13 +920,13 @@ class ModelEvaluator:
         cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
         return cm
 
-
-def plot_roc_auc(fpr, tpr):
-    """Function for plotting ROC_AUC Curve."""
-    plt.plot(fpr, tpr, color='red', label='ROC')
-    plt.plot([0, 1], [0, 1], color='darkblue', linestyle='--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver Operating Charateristics (ROC) Curve')
-    plt.legend()
-    return plt.show()
+    @staticmethod
+    def plot_roc_auc(fpr, tpr):
+        """Function for plotting ROC_AUC Curve."""
+        plt.plot(fpr, tpr, color='red', label='ROC')
+        plt.plot([0, 1], [0, 1], color='darkblue', linestyle='--')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Charateristics (ROC) Curve')
+        plt.legend()
+        return plt.show()
