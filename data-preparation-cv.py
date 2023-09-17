@@ -139,48 +139,59 @@ def _save_as_pickle_files(x_train, x_test, y_train, y_test, rep_type: str, cross
 
 if __name__ == "__main__":
     # 1. Loading Images and its Labels:
-    IMAGES, LABELS, REFERENCES = _load_images_labels(rep_type='spectrogram')
+    IMAGES, LABELS, REFERENCES = _load_images_labels(rep_type=c.IMG_REP_TYPE)
 
     # Converting IMAGES and LABELS into Numpy arrays:
     IMAGES = np.array(IMAGES, dtype=np.float32)
     LABELS = np.array(LABELS)
-    '''
+
     # 2. Resizing the images to 128x128:
     RESIZED_IMAGES = FeatureEngineeringCV.resize_images(images=IMAGES, new_width=c.IMG_WIDTH, new_height=c.IMG_LENGTH)
-    '''
+
     # 3. Splitting Images to train, test sets:
     if c.IMG_CROSS_VALIDATION:
         # 3.1. K-Fold Cross-Validation (6 Folds):
         X_TRAIN_FOLDS, Y_TRAIN_FOLDS, X_TEST_FOLDS, Y_TEST_FOLDS = _execute_cross_validation(images=IMAGES,
                                                                                              labels=LABELS,
                                                                                              references=REFERENCES)
-        '''
-        # 4.1 Balancing images:
-        X_TRAIN_FOLDS_RESAMPLED = []
-        Y_TRAIN_FOLDS_RESAMPLED = []
-        for fold_index in range(len(X_TRAIN_FOLDS)):
-            X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED = FeatureEngineeringCV.balance_images(images=X_TRAIN_FOLDS[fold_index],
-                                                                                       labels=Y_TRAIN_FOLDS[fold_index],
-                                                                                       rand_state=c.RANDOM_STATE,
-                                                                                       gray_scale=c.GRAY_SCALE)
-            X_TRAIN_FOLDS_RESAMPLED.append(X_TRAIN_RESAMPLED)
-            Y_TRAIN_FOLDS_RESAMPLED.append(Y_TRAIN_RESAMPLED)
-        
-        # 5.2 Normalizing images:
-        X_TRAIN_FOLDS_NORMALIZED = []
-        X_TEST_FOLDS_NORMALIZED = []
-        for fold_index in range(len(X_TRAIN_FOLDS)):
-            X_TRAIN_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TRAIN_FOLDS_RESAMPLED[fold_index])
-            X_TEST_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TEST_FOLDS[fold_index])
-            X_TRAIN_FOLDS_NORMALIZED.append(X_TRAIN_NORMALIZED)
-            X_TEST_FOLDS_NORMALIZED.append(X_TEST_NORMALIZED)
-        '''
+
+        if c.IMG_RESAMPLING:
+            # 4.1 Balancing images:
+            X_TRAIN_FOLDS_RESAMPLED = []
+            Y_TRAIN_FOLDS_RESAMPLED = []
+            for fold_index in range(len(X_TRAIN_FOLDS)):
+                X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED = FeatureEngineeringCV.balance_images(images=X_TRAIN_FOLDS[fold_index],
+                                                                                           labels=Y_TRAIN_FOLDS[fold_index],
+                                                                                           rand_state=c.RANDOM_STATE,
+                                                                                           gray_scale=c.GRAY_SCALE)
+                X_TRAIN_FOLDS_RESAMPLED.append(X_TRAIN_RESAMPLED)
+                Y_TRAIN_FOLDS_RESAMPLED.append(Y_TRAIN_RESAMPLED)
+                X_TRAIN_FOLDS = X_TRAIN_FOLDS_RESAMPLED
+                Y_TRAIN_FOLDS = Y_TRAIN_FOLDS_RESAMPLED
+        else:
+            pass
+
+        if c.IMG_NORMALIZATION:
+            # 5.2 Normalizing images:
+            X_TRAIN_FOLDS_NORMALIZED = []
+            X_TEST_FOLDS_NORMALIZED = []
+            for fold_index in range(len(X_TRAIN_FOLDS)):
+                X_TRAIN_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TRAIN_FOLDS[fold_index])
+                X_TEST_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TEST_FOLDS[fold_index])
+                X_TRAIN_FOLDS_NORMALIZED.append(X_TRAIN_NORMALIZED)
+                X_TEST_FOLDS_NORMALIZED.append(X_TEST_NORMALIZED)
+                X_TRAIN_FOLDS = X_TRAIN_FOLDS_NORMALIZED
+                X_TEST_FOLDS = X_TEST_FOLDS_NORMALIZED
+
+        else:
+            pass
+
         # Saving folds in form of Pickle file:
         _save_as_pickle_files(x_train=X_TRAIN_FOLDS,
                               x_test=X_TEST_FOLDS,
                               y_train=Y_TRAIN_FOLDS,
                               y_test=Y_TEST_FOLDS,
-                              rep_type='spectrogram',
+                              rep_type=c.IMG_REP_TYPE,
                               cross_validation=True)
 
     else:
@@ -191,20 +202,26 @@ if __name__ == "__main__":
                                                                              test_size=c.TEST_SIZE,
                                                                              rand_state=c.RANDOM_STATE)
 
-        # 4.2 Balancing images:
-        X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED = FeatureEngineeringCV.balance_images(images=X_TRAIN,
-                                                                                   labels=Y_TRAIN,
-                                                                                   rand_state=c.RANDOM_STATE,
-                                                                                   gray_scale=c.GRAY_SCALE)
+        if c.IMG_RESAMPLING:
+            # 4.2 Balancing images:
+            X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED = FeatureEngineeringCV.balance_images(images=X_TRAIN,
+                                                                                       labels=Y_TRAIN,
+                                                                                       rand_state=c.RANDOM_STATE,
+                                                                                       gray_scale=c.GRAY_SCALE)
+            X_TRAIN, Y_TRAIN = X_TRAIN_RESAMPLED, Y_TRAIN_RESAMPLED
+        else:
+            pass
 
-        # 5.2 Normalizing images:
-        X_TRAIN_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TRAIN_RESAMPLED)
-        X_TEST_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TEST)
+        if c.IMG_NORMALIZATION:
+            # 5.2 Normalizing images:
+            X_TRAIN_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TRAIN)
+            X_TEST_NORMALIZED = FeatureEngineeringCV.normalize_images(images=X_TEST)
+            X_TRAIN, X_TEST = X_TRAIN_NORMALIZED, X_TEST_NORMALIZED
 
         # Saving images and labels in form of Pickle file:
-        _save_as_pickle_files(x_train=X_TRAIN_NORMALIZED,
-                              x_test=X_TEST_NORMALIZED,
-                              y_train=Y_TRAIN_RESAMPLED,
+        _save_as_pickle_files(x_train=X_TRAIN,
+                              x_test=X_TEST,
+                              y_train=Y_TRAIN,
                               y_test=Y_TEST,
-                              rep_type='spectrogram',
+                              rep_type=c.IMG_REP_TYPE,
                               cross_validation=False)

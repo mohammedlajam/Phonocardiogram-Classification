@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
     # 1.2. Denoising:
     NORMALIZED_DFILTERS_SIGNALS = _denoise_signals(audio_signals=NORMALIZED_ORIGINAL_SIGNALS,
-                                                   denoise_method='emd_dfilters')
+                                                   denoise_method='digital_filters')
 
     # 1.3. Create DataFrames and References:
     NORMALIZED_ORIGINAL_SIGNALS = pd.DataFrame(NORMALIZED_ORIGINAL_SIGNALS)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
 
     _save_dataframe(dataframe=SLICED_NORMALIZED_DFILTERS_SIGNALS,
                     normalization='normalized',
-                    denoise_method='emd_dfilters',
+                    denoise_method='digital_filters',
                     csv_version=1)
 
     # 2. Denormalization:
@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     # 2.2. Denoising:
     DENORMALIZED_DFILTERS_SIGNALS = _denoise_signals(audio_signals=DENORMALIZED_ORIGINAL_SIGNALS,
-                                                     denoise_method='emd_dfilters')
+                                                     denoise_method='digital_filters')
 
     # 2.3. Create DataFrames and References:
     DENORMALIZED_ORIGINAL_SIGNALS = pd.DataFrame(DENORMALIZED_ORIGINAL_SIGNALS)
@@ -244,5 +244,5 @@ if __name__ == "__main__":
 
     _save_dataframe(dataframe=SLICED_DENORMALIZED_DFILTERS_SIGNALS,
                     normalization='denormalized',
-                    denoise_method='emd_dfilters',
+                    denoise_method='digital_filters',
                     csv_version=1)
