@@ -30,6 +30,7 @@ file from the 'models' package in the same repository.
 # Loading Libraries:
 import os
 import pickle
+import time
 
 import seaborn as sns
 
@@ -144,6 +145,7 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
         roc_auc_folds, auc_score_folds = [], []
         fpr_folds, tpr_folds = [], []
         cm_folds = []
+        test_duration_folds = []
 
         for fold in range(len(x_train_folds)):
             x_train, x_test, x_val, y_train, y_test, y_val = _data_per_fold(x_train=x_train_folds[fold],
@@ -191,10 +193,13 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
 
             # 2. Predictions:
             # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
             y_prob = ModelEvaluator.calculate_probabilities(model=lstm_model, x_test=x_test)
 
             # Finding the best threshold that provides the best accuracy:
-            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
 
             # Calculating Evaluation Matrix:
             evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
@@ -205,6 +210,11 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
             cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
+
+            end_time = time.time()  # Measuring the end_time of the predictions
+
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
 
             # Extracting evaluations matrices based on threshold, which provides the best accuracy:
             threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
@@ -223,6 +233,7 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
             fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
 
         # 3. Calculating the mean of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
@@ -238,7 +249,8 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
         mean_tp = sum(tp_folds) / len(tp_folds)
         mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
-        cm_mean = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_cm = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
 
         # 4. Calculating the Standard Deviation of all Evaluation Matrices:
         std_threshold = np.std(threshold_folds)
@@ -254,6 +266,7 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
         std_tp = np.std(tp_folds)
         std_roc_auc = np.std(roc_auc_folds)
         std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -283,6 +296,7 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
         mlflow.log_metric('mean_tp', mean_tp)
         mlflow.log_metric('mean_roc_auc', mean_roc_auc)
         mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -298,17 +312,32 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
         mlflow.log_metric('std_tp', float(std_tp))
         mlflow.log_metric('std_roc_auc', float(std_roc_auc))
         mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('tabular_lstm_fpr_folds.pkl', 'wb') as f:
-            pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('tabular_lstm_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_lstm_fpr_folds.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
 
-        with open('tabular_lstm_tpr_folds.pkl', 'wb') as f:
-            pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('tabular_lstm_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_lstm_tpr_folds.pkl')
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'tabular_lstm_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'tabular_lstm_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'tabular_lstm_{key}.pkl')
 
         # Saving the Model's Summary:
         artifact_path = "tabular_lstm_summary.txt"
@@ -319,7 +348,7 @@ def _run_evaluate_lstm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, 
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(cm_mean, annot=True, fmt='d', ax=ax)
+        sns.heatmap(mean_cm, annot=True, fmt='d', ax=ax)
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Confusion Matrix")
@@ -344,6 +373,7 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
         roc_auc_folds, auc_score_folds = [], []
         fpr_folds, tpr_folds = [], []
         cm_folds = []
+        test_duration_folds = []
 
         for fold in range(len(x_train_folds)):
             x_train, x_test, x_val, y_train, y_test, y_val = _data_per_fold(x_train=x_train_folds[fold],
@@ -377,6 +407,7 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
             # Saving the Model
             model_name = f"tabular_lstm_model_{fold}"
             mlflow.sklearn.log_model(lstm_model, model_name)
+            lstm_model.save(f'/{c.REPO_PATH}/data/models/tabular_rnn/tabular_lstm_model_{fold}/model.h5')
 
             # Plotting and saving Accuracy vs Epoch:
             fig, ax = plt.subplots(figsize=(6, 4))
@@ -387,13 +418,17 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
             ax.set_title('Accuracy over Epochs')
             ax.legend()
             mlflow.log_figure(fig, f'Accuracy_vs_Epochs (Fold_{fold + 1}).png')  # Log the plot in mlflow
+            plt.savefig(f'/{c.REPO_PATH}/data/models/tabular_rnn/Accuracy_vs_Epochs_{fold + 1}')  # Save the plot
 
             # 2. Predictions:
             # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
             y_prob = ModelEvaluator.calculate_probabilities(model=lstm_model, x_test=x_test)
 
             # Finding the best threshold that provides the best accuracy:
-            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
 
             # Calculating Evaluation Matrix:
             evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
@@ -404,6 +439,11 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
             cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
+
+            end_time = time.time()  # Measuring the end_time of the predictions
+
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
 
             # Extracting evaluations matrices based on threshold, which provides the best accuracy:
             threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
@@ -422,6 +462,7 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
             fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
 
         # 3. Calculating the mean of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
@@ -437,7 +478,8 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
         mean_tp = sum(tp_folds) / len(tp_folds)
         mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
-        cm_mean = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_cm = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
 
         # 4. Calculating the Standard Deviation of all Evaluation Matrices:
         std_threshold = np.std(threshold_folds)
@@ -453,6 +495,7 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
         std_tp = np.std(tp_folds)
         std_roc_auc = np.std(roc_auc_folds)
         std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -482,6 +525,7 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
         mlflow.log_metric('mean_tp', mean_tp)
         mlflow.log_metric('mean_roc_auc', mean_roc_auc)
         mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -497,17 +541,32 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
         mlflow.log_metric('std_tp', float(std_tp))
         mlflow.log_metric('std_roc_auc', float(std_roc_auc))
         mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('tabular_lstm_fpr_folds.pkl', 'wb') as f:
-            pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('tabular_lstm_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_lstm_fpr_folds.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
 
-        with open('tabular_lstm_tpr_folds.pkl', 'wb') as f:
-            pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('tabular_lstm_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_lstm_tpr_folds.pkl')
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'tabular_lstm_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'tabular_lstm_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'tabular_lstm_{key}.pkl')
 
         # Saving the Model's Summary:
         artifact_path = "tabular_lstm_summary.txt"
@@ -518,11 +577,12 @@ def _run_evaluate_lstm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_t
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(cm_mean, annot=True, fmt='d', ax=ax)
+        sns.heatmap(mean_cm, annot=True, fmt='d', ax=ax)
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Confusion Matrix")
         mlflow.log_figure(fig, "confusion_matrix.png")  # Log the plot in mlflow
+        plt.savefig(f'/{c.REPO_PATH}/data/models/tabular_rnn/confusion_matrix.png')  # Save the plot
 
         # End the mlflow run:
         mlflow.end_run()

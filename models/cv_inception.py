@@ -1,7 +1,7 @@
 """
 Author: Mohammed Lajam
 
-Phase 5: Classification (Computer Vision - Pre-trained Model: "VGG19"):
+Phase 5: Classification (Computer Vision - Pre-trained Model: "InceptionV3"):
 - In this python file, the audio data is imported from the '/data/cross_validation/selected_features/'
 directory.
 - After denoising the signals, Slicing the signals takes place to a specific length, so that all
@@ -77,7 +77,7 @@ def _load_cv_folds(rep_type: str):
 
 
 def _generate_val_set(x_train, x_test, y_train, y_test):
-    """Function to prepare the data for VGG19."""
+    """Function to prepare the data for InceptionV3."""
     # Splitting the data into train and validation sets:
     x_train, x_val, y_train, y_val = train_test_split(x_train, y_train,
                                                       test_size=c.TEST_SIZE,
@@ -92,8 +92,8 @@ def _generate_val_set(x_train, x_test, y_train, y_test):
     return x_train, x_test, x_val, y_train, y_test, y_val
 
 
-def _run_evaluate_vgg19(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
-    """Function to run and evaluate VGG19 Model based on Manual adjustment of Parameters.
+def _run_evaluate_inception(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
+    """Function to run and evaluate InceptionV3 Model based on Manual adjustment of Parameters.
     It returns all the Matrices, parameters and Artifacts into mlflow."""
     with mlflow.start_run():
         # Removing the warning messages while Executing the code and keep only the Errors:
@@ -116,35 +116,35 @@ def _run_evaluate_vgg19(x_train_folds, x_test_folds, y_train_folds, y_test_folds
                                                                                y_test=y_test_folds[fold])
 
             # Convert the data to TensorFlow Dataset format:
-            train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(c.CV_VGG19_BATCH_SIZE)
-            val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(c.CV_VGG19_BATCH_SIZE)
-            test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(c.CV_VGG19_BATCH_SIZE)
+            train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(c.CV_INCEPTION_BATCH_SIZE)
+            val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(c.CV_INCEPTION_BATCH_SIZE)
+            test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(c.CV_INCEPTION_BATCH_SIZE)
 
             input_shape = x_train[0].shape
 
             # 1. Building and fitting MLP Model:
-            vgg19_model, history = PretrainedModel.build_fit_vgg19(train_dataset=train_dataset,
-                                                                   val_dataset=val_dataset,
-                                                                   input_shape=input_shape,
-                                                                   include_top=c.CV_VGG19_INCLUDE_TOP,
-                                                                   vgg_weights=c.CV_VGG19_WEIGHTS,
-                                                                   trainable=c.CV_VGG19_TRAINABLE,
-                                                                   dense_1=c.CV_VGG19_DENSE_1,
-                                                                   dense_2=c.CV_VGG19_DENSE_2,
-                                                                   dense_1_l2=c.CV_VGG19_DENSE_1_L2,
-                                                                   dense_2_l2=c.CV_VGG19_DENSE_2_L2,
-                                                                   dropout_rate_1=c.CV_VGG19_DROPOUT_RATE_1,
-                                                                   dropout_rate_2=c.CV_VGG19_DROPOUT_RATE_2,
-                                                                   learning_rate=c.CV_VGG19_LEARNING_RATE,
-                                                                   loss=c.CV_VGG19_LOSS,
-                                                                   patience=c.CV_VGG19_PATIENCE,
-                                                                   epochs=c.CV_VGG19_EPOCHS)
+            inception_model, history = PretrainedModel.build_fit_inception(train_dataset=train_dataset,
+                                                                           val_dataset=val_dataset,
+                                                                           input_shape=input_shape,
+                                                                           include_top=c.CV_INCEPTION_INCLUDE_TOP,
+                                                                           inception_weights=c.CV_INCEPTION_WEIGHTS,
+                                                                           trainable=c.CV_INCEPTION_TRAINABLE,
+                                                                           dense_1=c.CV_INCEPTION_DENSE_1,
+                                                                           dense_2=c.CV_INCEPTION_DENSE_2,
+                                                                           dense_1_l2=c.CV_INCEPTION_DENSE_1_L2,
+                                                                           dense_2_l2=c.CV_INCEPTION_DENSE_2_L2,
+                                                                           dropout_rate_1=c.CV_INCEPTION_DROPOUT_RATE_1,
+                                                                           dropout_rate_2=c.CV_INCEPTION_DROPOUT_RATE_2,
+                                                                           learning_rate=c.CV_INCEPTION_LEARNING_RATE,
+                                                                           loss=c.CV_INCEPTION_LOSS,
+                                                                           patience=c.CV_INCEPTION_PATIENCE,
+                                                                           epochs=c.CV_INCEPTION_EPOCHS)
 
             # Saving the Model
-            model_name = f"cv_vgg19_model"
-            mlflow.sklearn.log_model(vgg19_model, model_name)
+            model_name = f"cv_inception_model"
+            mlflow.sklearn.log_model(inception_model, model_name)
             # Saving the model in data directory:
-            vgg19_model.save(f'/{c.REPO_PATH}/data/models/cv_vgg19/cv_vgg19_model_{fold}/model.h5')
+            inception_model.save(f'/{c.REPO_PATH}/data/models/cv_inception/cv_inception_model_{fold}/model.h5')
 
             # Plotting and saving Accuracy vs Epoch:
             fig, ax = plt.subplots(figsize=(6, 4))
@@ -155,12 +155,12 @@ def _run_evaluate_vgg19(x_train_folds, x_test_folds, y_train_folds, y_test_folds
             ax.set_title('Accuracy over Epochs')
             ax.legend()
             mlflow.log_figure(fig, f'Accuracy_vs_Epochs (Fold_{fold + 1}).png')  # Log the plot in mlflow
-            plt.savefig(f'/{c.REPO_PATH}/data/models/cv_vgg19/Accuracy_vs_Epochs_{fold + 1}')  # Save the plot
+            plt.savefig(f'/{c.REPO_PATH}/data/models/cv_inception/Accuracy_vs_Epochs_{fold + 1}')  # Save the plot
 
             # 2. Predictions:
             # Calculating the Probabilities:
             start_time = time.time()  # Measuring the start_time of the predictions
-            y_prob = ModelEvaluator.calculate_probabilities(model=vgg19_model, x_test=test_dataset)
+            y_prob = ModelEvaluator.calculate_probabilities(model=inception_model, x_test=test_dataset)
 
             # Finding the best threshold that provides the best accuracy:
             _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
@@ -236,19 +236,19 @@ def _run_evaluate_vgg19(x_train_folds, x_test_folds, y_train_folds, y_test_folds
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
-        mlflow.log_param('include_top', c.CV_VGG19_INCLUDE_TOP)
-        mlflow.log_param('weights', c.CV_VGG19_WEIGHTS)
-        mlflow.log_param('trainable', c.CV_VGG19_TRAINABLE)
-        mlflow.log_param('dense_1', c.CV_VGG19_DENSE_1)
-        mlflow.log_param('dense_2', c.CV_VGG19_DENSE_2)
-        mlflow.log_param('dense_1_l2', c.CV_VGG19_DENSE_1_L2)
-        mlflow.log_param('dense_2_l2', c.CV_VGG19_DENSE_2_L2)
-        mlflow.log_param('dropout_rate_1', c.CV_VGG19_DROPOUT_RATE_1)
-        mlflow.log_param('dropout_rate_2', c.CV_VGG19_DROPOUT_RATE_2)
-        mlflow.log_param('learning_rate', c.CV_VGG19_LEARNING_RATE)
-        mlflow.log_param('patience', c.CV_VGG19_PATIENCE)
-        mlflow.log_param('epochs', c.CV_VGG19_EPOCHS)
-        mlflow.log_param('batch_size', c.CV_VGG19_BATCH_SIZE)
+        mlflow.log_param('include_top', c.CV_INCEPTION_INCLUDE_TOP)
+        mlflow.log_param('weights', c.CV_INCEPTION_WEIGHTS)
+        mlflow.log_param('trainable', c.CV_INCEPTION_TRAINABLE)
+        mlflow.log_param('dense_1', c.CV_INCEPTION_DENSE_1)
+        mlflow.log_param('dense_2', c.CV_INCEPTION_DENSE_2)
+        mlflow.log_param('dense_1_l2', c.CV_INCEPTION_DENSE_1_L2)
+        mlflow.log_param('dense_2_l2', c.CV_INCEPTION_DENSE_2_L2)
+        mlflow.log_param('dropout_rate_1', c.CV_INCEPTION_DROPOUT_RATE_1)
+        mlflow.log_param('dropout_rate_2', c.CV_INCEPTION_DROPOUT_RATE_2)
+        mlflow.log_param('learning_rate', c.CV_INCEPTION_LEARNING_RATE)
+        mlflow.log_param('patience', c.CV_INCEPTION_PATIENCE)
+        mlflow.log_param('epochs', c.CV_INCEPTION_EPOCHS)
+        mlflow.log_param('batch_size', c.CV_INCEPTION_BATCH_SIZE)
 
         # Log the Matrices (Evaluation):
         # Mean of Matrices:
@@ -303,16 +303,16 @@ def _run_evaluate_vgg19(x_train_folds, x_test_folds, y_train_folds, y_test_folds
                                      "test_duration_folds": test_duration_folds}
 
         for key, value in evaluation_matrices_folds.items():
-            with open(f'cv_vgg19_{key}.pkl', 'wb') as f:
+            with open(f'cv_inception_{key}.pkl', 'wb') as f:
                 pickle.dump(value, f)
-            mlflow.log_artifact(f'cv_vgg19_{key}.pkl', artifact_path='evaluation_matrices_folds')
-            os.remove(f'cv_vgg19_{key}.pkl')
+            mlflow.log_artifact(f'cv_inception_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'cv_inception_{key}.pkl')
 
         # Saving the Model's Summary:
-        artifact_path = "cv_vgg19_summary.txt"
+        artifact_path = "cv_inception_summary.txt"
         with open(artifact_path, "w") as f:
-            vgg19_model.summary(print_fn=lambda x: f.write(x + "\n"))
-        mlflow.log_artifact(artifact_path, "cv_vgg19_summary.txt")
+            inception_model.summary(print_fn=lambda x: f.write(x + "\n"))
+        mlflow.log_artifact(artifact_path, "cv_inception_summary.txt")
         os.remove(artifact_path)
 
         # Logging the Average Confusion Matrix into mlflow:
@@ -322,11 +322,10 @@ def _run_evaluate_vgg19(x_train_folds, x_test_folds, y_train_folds, y_test_folds
         ax.set_ylabel("Actual")
         ax.set_title("Confusion Matrix")
         mlflow.log_figure(fig, "confusion_matrix.png")  # Log the plot in mlflow
-        plt.savefig(f'/{c.REPO_PATH}/data/models/cv_vgg19/confusion_matrix.png')  # Save the plot
+        plt.savefig(f'/{c.REPO_PATH}/data/models/cv_inception/confusion_matrix.png')  # Save the plot
 
         # End the mlflow run:
         mlflow.end_run()
-
     return None
 
 
@@ -337,8 +336,8 @@ if __name__ == "__main__":
     # Loading dataset:
     X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds(rep_type='spectrogram')
 
-    # Building, Fitting and Evaluating VGG19:
-    _run_evaluate_vgg19(x_train_folds=X_TRAIN_FOLDS,
-                        x_test_folds=X_TEST_FOLDS,
-                        y_train_folds=Y_TRAIN_FOLDS,
-                        y_test_folds=Y_TEST_FOLDS)
+    # Building, Fitting and Evaluating InceptionV3:
+    _run_evaluate_inception(x_train_folds=X_TRAIN_FOLDS,
+                            x_test_folds=X_TEST_FOLDS,
+                            y_train_folds=Y_TRAIN_FOLDS,
+                            y_test_folds=Y_TEST_FOLDS)

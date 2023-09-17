@@ -29,6 +29,7 @@ file from the 'models' package in the same repository.
 import seaborn as sns
 import os
 import pickle
+import time
 
 import constants as c
 from models.helpers import *
@@ -120,6 +121,7 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
         roc_auc_folds, auc_score_folds = [], []
         fpr_folds, tpr_folds = [], []
         cm_folds = []
+        test_duration_folds = []
 
         for fold in range(len(x_train_folds)):
             x_train, x_test, y_train, y_test = _data_per_fold(x_train=x_train_folds[fold],
@@ -141,10 +143,13 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
 
             # 2. Predictions:
             # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
             y_prob = ModelEvaluator.calculate_probabilities(model=svm_model, x_test=x_test)
 
             # Finding the best threshold that provides the best accuracy:
-            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
 
             # Calculating Evaluation Matrix:
             evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
@@ -155,6 +160,11 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
             cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
+
+            end_time = time.time()  # Measuring the end_time of the predictions
+
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
 
             # Extracting evaluations matrices based on threshold, which provides the best accuracy:
             threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
@@ -173,6 +183,7 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
             fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
 
         # 3. Calculating the Average of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
@@ -188,7 +199,8 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
         mean_tp = sum(tp_folds) / len(tp_folds)
         mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
-        cm_mean = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_cm = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
 
         # 4. Calculating the mean of all Evaluation Matrices:
         std_threshold = np.std(threshold_folds)
@@ -204,6 +216,7 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
         std_tp = np.std(tp_folds)
         std_roc_auc = np.std(roc_auc_folds)
         std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -217,7 +230,7 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
         mlflow.log_metric('mean_accuracy', mean_accuracy)
         mlflow.log_metric('mean_precision', mean_precision)
         mlflow.log_metric('mean_recall', mean_recall)
-        mlflow.log_metric('mean_f1_Score', mean_f1_score)
+        mlflow.log_metric('mean_f1_score', mean_f1_score)
         mlflow.log_metric('mean_sensitivity', mean_sensitivity)
         mlflow.log_metric('mean_specificity', mean_specificity)
         mlflow.log_metric('mean_tn', mean_tn)
@@ -226,6 +239,7 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
         mlflow.log_metric('mean_tp', mean_tp)
         mlflow.log_metric('mean_roc_auc', mean_roc_auc)
         mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -241,21 +255,36 @@ def _run_evaluate_svm_automatic_hp(x_train_folds, x_test_folds, y_train_folds, y
         mlflow.log_metric('std_tp', float(std_tp))
         mlflow.log_metric('std_roc_auc', float(std_roc_auc))
         mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('tabular_svm_fpr_folds.pkl', 'wb') as f:
-            pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('tabular_svm_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_svm_fpr_folds.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
 
-        with open('tabular_svm_tpr_folds.pkl', 'wb') as f:
-            pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('tabular_svm_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_svm_tpr_folds.pkl')
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'tabular_svm_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'tabular_svm_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'tabular_svm_{key}.pkl')
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(cm_mean, annot=True, fmt='d', ax=ax)
+        sns.heatmap(mean_cm, annot=True, fmt='d', ax=ax)
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Confusion Matrix")
@@ -277,6 +306,7 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
         roc_auc_folds, auc_score_folds = [], []
         fpr_folds, tpr_folds = [], []
         cm_folds = []
+        test_duration_folds = []
 
         for fold in range(len(x_train_folds)):
             x_train, x_test, y_train, y_test = _data_per_fold(x_train=x_train_folds[fold],
@@ -295,13 +325,19 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
             # Saving the Model
             model_name = f'tabular_svm_model_{fold}'
             mlflow.sklearn.log_model(svm_model, model_name)
+            # Save the model to the specified file path
+            with open(f'/{c.REPO_PATH}/data/models/tabular_svm/tabular_svm_model_{fold}/model.pkl', 'wb') as model_file:
+                pickle.dump(svm_model, model_file)
 
             # 2. Predictions:
             # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
             y_prob = ModelEvaluator.calculate_probabilities(model=svm_model, x_test=x_test)
 
             # Finding the best threshold that provides the best accuracy:
-            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
 
             # Calculating Evaluation Matrix:
             evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
@@ -312,6 +348,10 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
             cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
+            end_time = time.time()  # Measuring the end_time of the predictions
+
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
 
             # Extracting evaluations matrices based on threshold, which provides the best accuracy:
             threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
@@ -330,6 +370,7 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
             fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
 
         # 3. Calculating the Average of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
@@ -346,6 +387,7 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
         mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
         cm_mean = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
 
         # 4. Calculating the mean of all Evaluation Matrices:
         std_threshold = np.std(threshold_folds)
@@ -361,6 +403,7 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
         std_tp = np.std(tp_folds)
         std_roc_auc = np.std(roc_auc_folds)
         std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -383,6 +426,7 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
         mlflow.log_metric('mean_tp', mean_tp)
         mlflow.log_metric('mean_roc_auc', mean_roc_auc)
         mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -398,17 +442,32 @@ def _run_evaluate_svm_manual_hp(x_train_folds, x_test_folds, y_train_folds, y_te
         mlflow.log_metric('std_tp', float(std_tp))
         mlflow.log_metric('std_roc_auc', float(std_roc_auc))
         mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('tabular_svm_fpr_folds.pkl', 'wb') as f:
-            pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('tabular_svm_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_svm_fpr_folds.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
 
-        with open('tabular_svm_tpr_folds.pkl', 'wb') as f:
-            pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('tabular_svm_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_svm_tpr_folds.pkl')
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'tabular_svm_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'tabular_svm_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'tabular_svm_{key}.pkl')
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
@@ -434,7 +493,7 @@ if __name__ == "__main__":
         BEST_HP_FOLDS = _tune_hyper_parameters(x_train_folds=X_TRAIN_FOLDS,
                                                x_test_folds=X_TEST_FOLDS,
                                                y_train_folds=Y_TRAIN_FOLDS,
-                                               y_test_folds=Y_TEST_FOLDS,)
+                                               y_test_folds=Y_TEST_FOLDS)
 
         _run_evaluate_svm_automatic_hp(x_train_folds=X_TRAIN_FOLDS,
                                        x_test_folds=X_TEST_FOLDS,
@@ -446,6 +505,4 @@ if __name__ == "__main__":
         _run_evaluate_svm_manual_hp(x_train_folds=X_TRAIN_FOLDS,
                                     x_test_folds=X_TEST_FOLDS,
                                     y_train_folds=Y_TRAIN_FOLDS,
-                                    y_test_folds=Y_TEST_FOLDS,)
-
-
+                                    y_test_folds=Y_TEST_FOLDS)

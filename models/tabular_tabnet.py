@@ -28,6 +28,7 @@ file from the 'models' package in the same repository.
 import seaborn as sns
 import os
 import pickle
+import time
 import mlflow
 import mlflow.sklearn
 
@@ -127,6 +128,7 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         roc_auc_folds, auc_score_folds = [], []
         fpr_folds, tpr_folds = [], []
         cm_folds = []
+        test_duration_folds = []
 
         for fold in range(len(x_train_folds)):
             # Extracting the data per fold:
@@ -168,10 +170,13 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
 
             # 2. Predictions:
             # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
             y_prob = ModelEvaluator.calculate_probabilities(model=tb_model, x_test=x_test)
 
             # Finding the best threshold that provides the best accuracy:
-            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
 
             # Calculating Evaluation Matrix:
             evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
@@ -182,6 +187,11 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
             cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
+
+            end_time = time.time()  # Measuring the end_time of the predictions
+
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
 
             # Extracting evaluations matrices based on threshold, which provides the best accuracy:
             threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
@@ -200,6 +210,7 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
             fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
 
         # 3. Calculating the Average of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
@@ -216,6 +227,7 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
         mean_cm = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
 
         # 4. Calculating the mean of all Evaluation Matrices:
         std_threshold = np.std(threshold_folds)
@@ -231,6 +243,7 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         std_tp = np.std(tp_folds)
         std_roc_auc = np.std(roc_auc_folds)
         std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -262,6 +275,7 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         mlflow.log_metric('mean_tp', mean_tp)
         mlflow.log_metric('mean_roc_auc', mean_roc_auc)
         mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -277,17 +291,32 @@ def _run_evaluate_tabnet_automatic_hp(x_train_folds, x_test_folds, y_train_folds
         mlflow.log_metric('std_tp', float(std_tp))
         mlflow.log_metric('std_roc_auc', float(std_roc_auc))
         mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('tabular_tabnet_fpr_folds.pkl', 'wb') as f:
-            pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('tabular_tabnet_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_tabnet_fpr_folds.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
 
-        with open('tabular_tabnet_tpr_folds.pkl', 'wb') as f:
-            pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('tabular_tabnet_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_tabnet_tpr_folds.pkl')
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'tabular_tabnet_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'tabular_tabnet_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'tabular_tabnet_{key}.pkl')
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
@@ -311,6 +340,7 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         roc_auc_folds, auc_score_folds = [], []
         fpr_folds, tpr_folds = [], []
         cm_folds = []
+        test_duration_folds = []
 
         for fold in range(len(x_train_folds)):
             # Extracting the data per fold:
@@ -337,8 +367,9 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
                                                              patience=c.TB_TABNET_PATIENCE,
                                                              batch_size=c.TB_TABNET_BATCH_SIZE)
 
-            # Save the Model
+            # Save the Model:
             mlflow.sklearn.log_model(tb_model, f'tabnet_model_{fold}')
+            tb_model.save_model(f'/{c.REPO_PATH}/data/models/tabular_tabnet/tabular_tabnet_model_{fold}/')
 
             # Plotting the Accuracy each Epoch and save it in mlflow:
             fig, ax = plt.subplots(figsize=(6, 4))
@@ -349,13 +380,17 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
             ax.set_title('Accuracy over Epochs')
             ax.legend()
             mlflow.log_figure(fig, f'Accuracy_vs_Epochs (Fold_{fold+1}).png')  # Log the plot in mlflow
+            plt.savefig(f'/{c.REPO_PATH}/data/models/tabular_tabnet/Accuracy_vs_Epochs_{fold + 1}')  # Save the plot
 
             # 2. Predictions:
             # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
             y_prob = ModelEvaluator.calculate_probabilities(model=tb_model, x_test=x_test)
 
             # Finding the best threshold that provides the best accuracy:
-            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
 
             # Calculating Evaluation Matrix:
             evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
@@ -366,6 +401,11 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
             cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
+
+            end_time = time.time()  # Measuring the end_time of the predictions
+
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
 
             # Extracting evaluations matrices based on threshold, which provides the best accuracy:
             threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
@@ -384,6 +424,7 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
             fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
             tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
             cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
 
         # 3. Calculating the Average of all Evaluation Matrices:
         mean_threshold = sum(threshold_folds) / len(threshold_folds)
@@ -400,6 +441,7 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
         mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
         mean_cm = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
 
         # 4. Calculating the mean of all Evaluation Matrices:
         std_threshold = np.std(threshold_folds)
@@ -415,6 +457,7 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         std_tp = np.std(tp_folds)
         std_roc_auc = np.std(roc_auc_folds)
         std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -433,19 +476,20 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
 
         # Log the Matrices (Evaluation):
         # Mean of Matrices:
-        mlflow.log_metric('Threshold', mean_threshold)
-        mlflow.log_metric('Accuracy', mean_accuracy)
-        mlflow.log_metric('Precision', mean_precision)
-        mlflow.log_metric('Recall', mean_recall)
-        mlflow.log_metric('F1_Score', mean_f1_score)
-        mlflow.log_metric('Sensitivity', mean_sensitivity)
-        mlflow.log_metric('Specificity', mean_specificity)
-        mlflow.log_metric('TN', mean_tn)
-        mlflow.log_metric('FP', mean_fp)
-        mlflow.log_metric('FN', mean_fn)
-        mlflow.log_metric('TP', mean_tp)
-        mlflow.log_metric('ROC_AUC', mean_roc_auc)
-        mlflow.log_metric('AUC_Score', mean_auc_score)
+        mlflow.log_metric('mean_threshold', mean_threshold)
+        mlflow.log_metric('mean_accuracy', mean_accuracy)
+        mlflow.log_metric('mean_precision', mean_precision)
+        mlflow.log_metric('mean_recall', mean_recall)
+        mlflow.log_metric('mean_f1_score', mean_f1_score)
+        mlflow.log_metric('mean_sensitivity', mean_sensitivity)
+        mlflow.log_metric('mean_specificity', mean_specificity)
+        mlflow.log_metric('mean_tn', mean_tn)
+        mlflow.log_metric('mean_fp', mean_fp)
+        mlflow.log_metric('mean_fn', mean_fn)
+        mlflow.log_metric('mean_tp', mean_tp)
+        mlflow.log_metric('mean_roc_auc', mean_roc_auc)
+        mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
         # Standard Deviation of Matrices:
         mlflow.log_metric('std_threshold', float(std_threshold))
@@ -461,17 +505,32 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         mlflow.log_metric('std_tp', float(std_tp))
         mlflow.log_metric('std_roc_auc', float(std_roc_auc))
         mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('tabular_tabnet_fpr_folds.pkl', 'wb') as f:
-            pickle.dump(fpr_folds, f)
-        mlflow.log_artifact('tabular_tabnet_fpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_tabnet_fpr_folds.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
 
-        with open('tabular_tabnet_tpr_folds.pkl', 'wb') as f:
-            pickle.dump(tpr_folds, f)
-        mlflow.log_artifact('tabular_tabnet_tpr_folds.pkl', artifact_path='fpr_tpr')
-        os.remove('tabular_tabnet_tpr_folds.pkl')
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'tabular_tabnet_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'tabular_tabnet_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'tabular_tabnet_{key}.pkl')
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
@@ -480,6 +539,7 @@ def _run_evaluate_tabnet_manual_hp(x_train_folds, x_test_folds, y_train_folds, y
         ax.set_ylabel("Actual")
         ax.set_title("Confusion Matrix")
         mlflow.log_figure(fig, "confusion_matrix.png")  # Log the plot in mlflow
+        plt.savefig(f'/{c.REPO_PATH}/data/models/tabular_tabnet/confusion_matrix.png')  # Save the plot
 
         # End the mlflow run:
         mlflow.end_run()

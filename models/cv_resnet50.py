@@ -31,6 +31,7 @@ file from the 'models' package in the same repository.
 # Loading Libraries:
 import os
 import pickle
+import time
 
 import seaborn as sns
 
@@ -91,88 +92,147 @@ def _generate_val_set(x_train, x_test, y_train, y_test):
     return x_train, x_test, x_val, y_train, y_test, y_val
 
 
-def _run_evaluate_resnet50(x_train, x_test, y_train, y_test):
+def _run_evaluate_resnet50(x_train_folds, x_test_folds, y_train_folds, y_test_folds):
     """Function to run and evaluate ResNet50 Model based on Manual adjustment of Parameters.
     It returns all the Matrices, paramters and Artifacts into mlflow."""
     with mlflow.start_run():
-        # Splitting x_train into x_train and x_val:
-        x_train, x_test, x_val, y_train, y_test, y_val = _generate_val_set(x_train=x_train,
-                                                                           x_test=x_test,
-                                                                           y_train=y_train,
-                                                                           y_test=y_test)
+        # Removing the warning messages while Executing the code and keep only the Errors:
+        logging.getLogger('mlflow').setLevel(logging.ERROR)
 
-        # Convert the data to TensorFlow Dataset format:
-        train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(c.CV_RN50_BATCH_SIZE)
-        val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(c.CV_RN50_BATCH_SIZE)
-        test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(c.CV_RN50_BATCH_SIZE)
+        # Creating Empty Lists for all Evaluation Matrices:
+        threshold_folds, accuracy_folds, precision_folds, recall_folds, f1_score_folds = [], [], [], [], []
+        sensitivity_folds, specificity_folds = [], []
+        tn_folds, fp_folds, fn_folds, tp_folds = [], [], [], []
+        roc_auc_folds, auc_score_folds = [], []
+        fpr_folds, tpr_folds = [], []
+        cm_folds = []
+        test_duration_folds = []
 
-        input_shape = x_train[0].shape
+        for fold in range(len(x_train_folds)):
+            # Splitting x_train into x_train and x_val:
+            x_train, x_test, x_val, y_train, y_test, y_val = _generate_val_set(x_train=x_train_folds[fold],
+                                                                               x_test=x_test_folds[fold],
+                                                                               y_train=y_train_folds[fold],
+                                                                               y_test=y_test_folds[fold])
 
-        # 1. Building and fitting ResNet50 Model:
-        resnet50_model, history = PretrainedModel.build_fit_resnet50(train_dataset=train_dataset,
-                                                                     val_dataset=val_dataset,
-                                                                     input_shape=input_shape,
-                                                                     include_top=c.CV_RN50_INCLUDE_TOP,
-                                                                     resnet_weights=c.CV_RN50_WEIGHTS,
-                                                                     trainable=c.CV_RN50_TRAINABLE,
-                                                                     dense_1=c.CV_RN50_DENSE_1,
-                                                                     dense_2=c.CV_RN50_DENSE_2,
-                                                                     dense_1_l2=c.CV_RN50_DENSE_1_L2,
-                                                                     dense_2_l2=c.CV_RN50_DENSE_2_L2,
-                                                                     dropout_rate_1=c.CV_RN50_DROPOUT_RATE_1,
-                                                                     dropout_rate_2=c.CV_RN50_DROPOUT_RATE_2,
-                                                                     learning_rate=c.CV_RN50_LEARNING_RATE,
-                                                                     loss=c.CV_RN50_LOSS,
-                                                                     patience=c.CV_RN50_PATIENCE,
-                                                                     epochs=c.CV_RN50_EPOCHS)
+            # Convert the data to TensorFlow Dataset format:
+            train_dataset = tf.data.Dataset.from_tensor_slices((x_train, y_train)).batch(c.CV_RN50_BATCH_SIZE)
+            val_dataset = tf.data.Dataset.from_tensor_slices((x_val, y_val)).batch(c.CV_RN50_BATCH_SIZE)
+            test_dataset = tf.data.Dataset.from_tensor_slices((x_test, y_test)).batch(c.CV_RN50_BATCH_SIZE)
 
-        # Saving the Model
-        model_name = f"cv_resnet50_model"
-        mlflow.sklearn.log_model(resnet50_model, model_name)
+            input_shape = x_train[0].shape
 
-        # Plotting and saving Accuracy vs Epoch:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.plot(history.history['accuracy'], label=f'Train Accuracy')
-        ax.plot(history.history['val_accuracy'], label=f'Validation Accuracy')
-        ax.set_xlabel('Epoch')
-        ax.set_ylabel('Accuracy')
-        ax.set_title('Accuracy over Epochs')
-        ax.legend()
-        mlflow.log_figure(fig, f'Accuracy_vs_Epochs.png')  # Log the plot in mlflow
+            # 1. Building and fitting ResNet50 Model:
+            resnet50_model, history = PretrainedModel.build_fit_resnet50(train_dataset=train_dataset,
+                                                                         val_dataset=val_dataset,
+                                                                         input_shape=input_shape,
+                                                                         include_top=c.CV_RN50_INCLUDE_TOP,
+                                                                         resnet_weights=c.CV_RN50_WEIGHTS,
+                                                                         trainable=c.CV_RN50_TRAINABLE,
+                                                                         dense_1=c.CV_RN50_DENSE_1,
+                                                                         dense_2=c.CV_RN50_DENSE_2,
+                                                                         dense_1_l2=c.CV_RN50_DENSE_1_L2,
+                                                                         dense_2_l2=c.CV_RN50_DENSE_2_L2,
+                                                                         dropout_rate_1=c.CV_RN50_DROPOUT_RATE_1,
+                                                                         dropout_rate_2=c.CV_RN50_DROPOUT_RATE_2,
+                                                                         learning_rate=c.CV_RN50_LEARNING_RATE,
+                                                                         loss=c.CV_RN50_LOSS,
+                                                                         patience=c.CV_RN50_PATIENCE,
+                                                                         epochs=c.CV_RN50_EPOCHS)
 
-        # 2. Predictions:
-        # Calculating the Probabilities:
-        y_prob = ModelEvaluator.calculate_probabilities(model=resnet50_model, x_test=test_dataset)
+            # Saving the Model
+            model_name = f"cv_resnet50_model_{fold}"
+            mlflow.sklearn.log_model(resnet50_model, model_name)
+            # Saving the model in data directory:
+            resnet50_model.save(f'/{c.REPO_PATH}/data/models/cv_resnet50/cv_resnet_model50_{fold}/model.h5')
 
-        # Finding the best threshold that provides the best accuracy:
-        _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test, y_prob=y_prob)
+            # Plotting and saving Accuracy vs Epoch:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.plot(history.history['accuracy'], label=f'Fold_{fold + 1} Train Accuracy')
+            ax.plot(history.history['val_accuracy'], label=f'Fold_{fold + 1} Validation Accuracy')
+            ax.set_xlabel('Epoch')
+            ax.set_ylabel('Accuracy')
+            ax.set_title('Accuracy over Epochs')
+            ax.legend()
+            mlflow.log_figure(fig, f'Accuracy_vs_Epochs (Fold_{fold + 1}).png')  # Log the plot in mlflow
+            plt.savefig(f'/{c.REPO_PATH}/data/models/cv_resnet50/Accuracy_vs_Epochs_{fold + 1}')  # Save the plot
 
-        # Calculating Evaluation Matrix:
-        evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
+            # 2. Predictions:
+            # Calculating the Probabilities:
+            start_time = time.time()  # Measuring the start_time of the predictions
+            y_prob = ModelEvaluator.calculate_probabilities(model=resnet50_model, x_test=test_dataset)
+
+            # Finding the best threshold that provides the best accuracy:
+            _, best_threshold = ModelEvaluator.find_best_threshold(y_test=y_test,
+                                                                   y_prob=y_prob,
+                                                                   evaluation_matrix='f1_score')
+
+            # Calculating Evaluation Matrix:
+            evaluation_matrix = ModelEvaluator.evaluate_model(y_test=y_test,
+                                                              y_prob=y_prob,
+                                                              threshold=best_threshold)
+
+            # Generating Confusion Matrix
+            cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
                                                           y_prob=y_prob,
                                                           threshold=best_threshold)
 
-        # Generating Confusion Matrix
-        cm = ModelEvaluator.generate_confusion_matrix(y_test=y_test,
-                                                      y_prob=y_prob,
-                                                      threshold=best_threshold)
+            end_time = time.time()  # Measuring the end_time of the predictions
 
-        # Extracting evaluations matrices based on threshold, which provides the best accuracy:
-        threshold = evaluation_matrix.iloc[0]['Threshold']
-        accuracy = evaluation_matrix.iloc[0]['Accuracy']
-        precision = evaluation_matrix.iloc[0]['Precision']
-        recall = evaluation_matrix.iloc[0]['Recall']
-        f1_score = evaluation_matrix.iloc[0]['F1-score']
-        sensitivity = evaluation_matrix.iloc[0]['Sensitivity']
-        specificity = evaluation_matrix.iloc[0]['Specificity']
-        tn = evaluation_matrix.iloc[0]['TN']
-        fp = evaluation_matrix.iloc[0]['FP']
-        fn = evaluation_matrix.iloc[0]['FN']
-        tp = evaluation_matrix.iloc[0]['TP']
-        roc_auc = evaluation_matrix.iloc[0]['ROC_AUC']
-        auc_score = evaluation_matrix.iloc[0]['AUC_Score']
-        fpr = evaluation_matrix.iloc[0]['FPR']
-        tpr = evaluation_matrix.iloc[0]['TPR']
+            # Calculate the duration of prediction's process:
+            test_duration = end_time - start_time
+
+            # Extracting evaluations matrices based on threshold, which provides the best accuracy:
+            threshold_folds.append(evaluation_matrix.iloc[0]['Threshold'])
+            accuracy_folds.append(evaluation_matrix.iloc[0]['Accuracy'])
+            precision_folds.append(evaluation_matrix.iloc[0]['Precision'])
+            recall_folds.append(evaluation_matrix.iloc[0]['Recall'])
+            f1_score_folds.append(evaluation_matrix.iloc[0]['F1-score'])
+            sensitivity_folds.append(evaluation_matrix.iloc[0]['Sensitivity'])
+            specificity_folds.append(evaluation_matrix.iloc[0]['Specificity'])
+            tn_folds.append(evaluation_matrix.iloc[0]['TN'])
+            fp_folds.append(evaluation_matrix.iloc[0]['FP'])
+            fn_folds.append(evaluation_matrix.iloc[0]['FN'])
+            tp_folds.append(evaluation_matrix.iloc[0]['TP'])
+            roc_auc_folds.append(evaluation_matrix.iloc[0]['ROC_AUC'])
+            auc_score_folds.append(evaluation_matrix.iloc[0]['AUC_Score'])
+            fpr_folds.append(evaluation_matrix.iloc[0]['FPR'])
+            tpr_folds.append(evaluation_matrix.iloc[0]['TPR'])
+            cm_folds.append(cm)
+            test_duration_folds.append(test_duration)
+
+        # 3. Calculating the mean of all Evaluation Matrices:
+        mean_threshold = sum(threshold_folds) / len(threshold_folds)
+        mean_accuracy = sum(accuracy_folds) / len(accuracy_folds)
+        mean_precision = sum(precision_folds) / len(precision_folds)
+        mean_recall = sum(recall_folds) / len(recall_folds)
+        mean_f1_score = sum(f1_score_folds) / len(f1_score_folds)
+        mean_sensitivity = sum(sensitivity_folds) / len(sensitivity_folds)
+        mean_specificity = sum(specificity_folds) / len(specificity_folds)
+        mean_tn = sum(tn_folds) / len(tn_folds)
+        mean_fp = sum(fp_folds) / len(fp_folds)
+        mean_fn = sum(fn_folds) / len(fn_folds)
+        mean_tp = sum(tp_folds) / len(tp_folds)
+        mean_roc_auc = sum(roc_auc_folds) / len(roc_auc_folds)
+        mean_auc_score = sum(auc_score_folds) / len(auc_score_folds)
+        mean_cm = (sum(cm_folds) / len(cm_folds)).astype(int)
+        mean_test_duration = sum(test_duration_folds) / len(test_duration_folds)
+
+        # 4. Calculating the Standard Deviation of all Evaluation Matrices:
+        std_threshold = np.std(threshold_folds)
+        std_accuracy = np.std(accuracy_folds)
+        std_precision = np.std(precision_folds)
+        std_recall = np.std(recall_folds)
+        std_f1_score = np.std(f1_score_folds)
+        std_sensitivity = np.std(sensitivity_folds)
+        std_specificity = np.std(specificity_folds)
+        std_tn = np.std(tn_folds)
+        std_fp = np.std(fp_folds)
+        std_fn = np.std(fn_folds)
+        std_tp = np.std(tp_folds)
+        std_roc_auc = np.std(roc_auc_folds)
+        std_auc_score = np.std(auc_score_folds)
+        std_test_duration = np.std(test_duration_folds)
 
         # 5. logging all Artifacts, Parameters and Matrices into mlflow:
         # Log the Hyper-Parameters:
@@ -192,48 +252,81 @@ def _run_evaluate_resnet50(x_train, x_test, y_train, y_test):
 
         # Log the Matrices (Evaluation):
         # Mean of Matrices:
-        mlflow.log_metric('mean_threshold', threshold)
-        mlflow.log_metric('mean_accuracy', accuracy)
-        mlflow.log_metric('mean_precision', precision)
-        mlflow.log_metric('mean_recall', recall)
-        mlflow.log_metric('mean_f1_score', f1_score)
-        mlflow.log_metric('mean_sensitivity', sensitivity)
-        mlflow.log_metric('mean_specificity', specificity)
-        mlflow.log_metric('mean_tn', tn)
-        mlflow.log_metric('mean_fp', fp)
-        mlflow.log_metric('mean_fn', fn)
-        mlflow.log_metric('mean_tp', tp)
-        mlflow.log_metric('mean_roc_auc', roc_auc)
-        mlflow.log_metric('mean_auc_score', auc_score)
+        mlflow.log_metric('mean_threshold', mean_threshold)
+        mlflow.log_metric('mean_accuracy', mean_accuracy)
+        mlflow.log_metric('mean_precision', mean_precision)
+        mlflow.log_metric('mean_recall', mean_recall)
+        mlflow.log_metric('mean_f1_score', mean_f1_score)
+        mlflow.log_metric('mean_sensitivity', mean_sensitivity)
+        mlflow.log_metric('mean_specificity', mean_specificity)
+        mlflow.log_metric('mean_tn', mean_tn)
+        mlflow.log_metric('mean_fp', mean_fp)
+        mlflow.log_metric('mean_fn', mean_fn)
+        mlflow.log_metric('mean_tp', mean_tp)
+        mlflow.log_metric('mean_roc_auc', mean_roc_auc)
+        mlflow.log_metric('mean_auc_score', mean_auc_score)
+        mlflow.log_metric('mean_test_duration', mean_test_duration)
 
-        # Saving fpr_folds and tpr_folds as pickle file and log it into mlflow as artifact:
-        with open('cv_resnet_fpr.pkl', 'wb') as f:
-            pickle.dump(fpr, f)
-        mlflow.log_artifact('cv_resnet_fpr.pkl', artifact_path='fpr_tpr')
-        os.remove('cv_resnet_fpr.pkl')
+        # Standard Deviation of Matrices:
+        mlflow.log_metric('std_threshold', float(std_threshold))
+        mlflow.log_metric('std_accuracy', float(std_accuracy))
+        mlflow.log_metric('std_precision', float(std_precision))
+        mlflow.log_metric('std_recall', float(std_recall))
+        mlflow.log_metric('std_f1_score', float(std_f1_score))
+        mlflow.log_metric('std_sensitivity', float(std_sensitivity))
+        mlflow.log_metric('std_specificity', float(std_specificity))
+        mlflow.log_metric('std_tn', float(std_tn))
+        mlflow.log_metric('std_fp', float(std_fp))
+        mlflow.log_metric('std_fn', float(std_fn))
+        mlflow.log_metric('std_tp', float(std_tp))
+        mlflow.log_metric('std_roc_auc', float(std_roc_auc))
+        mlflow.log_metric('std_auc_score', float(std_auc_score))
+        mlflow.log_metric('std_test_duration', float(std_test_duration))
 
-        with open('cv_resnet_tpr.pkl', 'wb') as f:
-            pickle.dump(tpr, f)
-        mlflow.log_artifact('cv_resnet_tpr.pkl', artifact_path='fpr_tpr')
-        os.remove('cv_resnet_tpr.pkl')
+        # Saving each metric of Evaluation Matrices as list:
+        evaluation_matrices_folds = {"threshold_folds": threshold_folds,
+                                     "accuracy_folds": accuracy_folds,
+                                     "precision_folds": precision_folds,
+                                     "recall_folds": recall_folds,
+                                     "f1_score_folds": f1_score_folds,
+                                     "sensitivity_folds": sensitivity_folds,
+                                     "specificity_folds": specificity_folds,
+                                     "tn_folds": tn_folds,
+                                     "fp_folds": fp_folds,
+                                     "fn_folds": fn_folds,
+                                     "tp_folds": tp_folds,
+                                     "roc_auc_folds": roc_auc_folds,
+                                     "auc_score_folds": auc_score_folds,
+                                     "fpr_folds": fpr_folds,
+                                     "tpr_folds": tpr_folds,
+                                     "cm_folds": cm_folds,
+                                     "test_duration_folds": test_duration_folds}
+
+        for key, value in evaluation_matrices_folds.items():
+            with open(f'cv_resnet50_{key}.pkl', 'wb') as f:
+                pickle.dump(value, f)
+            mlflow.log_artifact(f'cv_resnet50_{key}.pkl', artifact_path='evaluation_matrices_folds')
+            os.remove(f'cv_resnet50_{key}.pkl')
 
         # Saving the Model's Summary:
         artifact_path = "cv_resnet_summary.txt"
         with open(artifact_path, "w") as f:
             resnet50_model.summary(print_fn=lambda x: f.write(x + "\n"))
-        mlflow.log_artifact(artifact_path, "cv_resnet_summary.txt")
+        mlflow.log_artifact(artifact_path, "cv_resnet50_summary.txt")
         os.remove(artifact_path)
 
         # Logging the Average Confusion Matrix into mlflow:
         fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(cm, annot=True, fmt='d', ax=ax)
+        sns.heatmap(mean_cm, annot=True, fmt='d', ax=ax)
         ax.set_xlabel("Predicted")
         ax.set_ylabel("Actual")
         ax.set_title("Confusion Matrix")
         mlflow.log_figure(fig, "confusion_matrix.png")  # Log the plot in mlflow
+        plt.savefig(f'/{c.REPO_PATH}/data/models/cv_resnet50/confusion_matrix.png')  # Save the plot
 
         # End the mlflow run:
         mlflow.end_run()
+
     return None
 
 
@@ -243,10 +336,9 @@ if __name__ == "__main__":
 
     # Loading dataset:
     X_TRAIN_FOLDS, X_TEST_FOLDS, Y_TRAIN_FOLDS, Y_TEST_FOLDS = _load_cv_folds(rep_type='spectrogram')
-    X_TRAIN, X_TEST, Y_TRAIN, Y_TEST = X_TRAIN_FOLDS[0], X_TEST_FOLDS[0], Y_TRAIN_FOLDS[0], Y_TEST_FOLDS[0]
 
     # Building, Fitting and Evaluating ResNet50:
-    _run_evaluate_resnet50(x_train=X_TRAIN,
-                           x_test=X_TEST,
-                           y_train=Y_TRAIN,
-                           y_test=Y_TEST)
+    _run_evaluate_resnet50(x_train_folds=X_TRAIN_FOLDS,
+                           x_test_folds=X_TEST_FOLDS,
+                           y_train_folds=Y_TRAIN_FOLDS,
+                           y_test_folds=Y_TEST_FOLDS)
