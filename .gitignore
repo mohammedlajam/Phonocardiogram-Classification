@@ -1,7 +1,30 @@
 .idea
 .DS_Store
-.ipynb_checkpoints
-feature_extraction/.ipynb_checkpoints
-feature_extraction/.DS_Store
+venv
+
+# 1. Data Folder:
+data
+data/pcg_signals/PhysioNet_2016
+data/pcg_signals/PASCAL_2011
+data/denoised_signals/emd
+data/denoised_signals/wavelet_transform
+data/denoised_signals/digital_filters
+data/denoised_signals/emd_wavelet
+data/denoised_signals/emd_dfilters
+data/denoised_signals/emd_wl_dfilter
+
+# 2. Signal-Preprocessing:
 signal_preprocessing/.ipynb_checkpoints
 signal_preprocessing/.DS_Store
+
+# 3. Feature-Extraction:
+feature_extraction/.ipynb_checkpoints
+feature_extraction/.DS_Store
+
+# 4. Models:
+models/mlruns
+
+# Other files:
+__pycache__
+.ipynb_checkpoints
+signal_preprocessing/__pycache__/helpers.cpython-310.pyc
