@@ -872,21 +872,35 @@ class ModelEvaluator:
         return y_prob
 
     @staticmethod
-    def find_best_threshold(y_test, y_prob):
+    def find_best_threshold(y_test, y_prob, evaluation_matrix: str):
         # Extracting fpr, tpr and thresholds:
         _, _, thresholds = roc_curve(y_test, y_prob)
         # Calculating all the evaluation accuracy based on all the thresholds:
-        accuracy_matrix = []
-        for threshold in thresholds:
-            y_pred = np.where(y_prob > threshold, 1, 0)
-            accuracy = accuracy_score(y_test, y_pred)
-            accuracy_matrix.append((threshold, accuracy))
-        # Create a dataframe
-        accuracy_matrix_df = pd.DataFrame(accuracy_matrix, columns=['Threshold', 'Accuracy'])
-        accuracy_matrix_df.sort_values(by='Accuracy', ascending=False, inplace=True)
-        best_accuracy = accuracy_matrix_df.iloc[0]['Accuracy']
-        best_threshold = accuracy_matrix_df.iloc[0]['Threshold']
-        return best_accuracy, best_threshold
+        if evaluation_matrix == 'accuracy':
+            accuracy_matrix = []
+            for threshold in thresholds:
+                y_pred = np.where(y_prob > threshold, 1, 0)
+                accuracy = accuracy_score(y_test, y_pred)
+                accuracy_matrix.append((threshold, accuracy))
+            # Create a dataframe
+            accuracy_matrix_df = pd.DataFrame(accuracy_matrix, columns=['Threshold', 'Accuracy'])
+            accuracy_matrix_df.sort_values(by='Accuracy', ascending=False, inplace=True)
+            best_accuracy = accuracy_matrix_df.iloc[0]['Accuracy']
+            best_threshold = accuracy_matrix_df.iloc[0]['Threshold']
+            return best_accuracy, best_threshold
+
+        elif evaluation_matrix == 'f1_score':
+            f1_score_matrix = []
+            for threshold in thresholds:
+                y_pred = np.where(y_prob > threshold, 1, 0)
+                f1 = f1_score(y_test, y_pred)
+                f1_score_matrix.append((threshold, f1))
+            # Create a dataframe
+            f1_score_matrix_df = pd.DataFrame(f1_score_matrix, columns=['Threshold', 'Accuracy'])
+            f1_score_matrix_df.sort_values(by='Accuracy', ascending=False, inplace=True)
+            best_f1_score = f1_score_matrix_df.iloc[0]['Accuracy']
+            best_threshold = f1_score_matrix_df.iloc[0]['Threshold']
+            return best_f1_score, best_threshold
 
     @staticmethod
     def evaluate_model(y_test, y_prob, threshold):
