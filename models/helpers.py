@@ -60,7 +60,7 @@ class HyperParametersTuner:
         svm_model = svm.SVC(random_state=rand_state)
 
         # Performing Grid Search Cross Validation
-        clf = GridSearchCV(svm_model, param_grid, n_jobs=-1)
+        clf = GridSearchCV(svm_model, param_grid, n_jobs=-1, scoring='f1')
         clf.fit(x_train, y_train)
 
         # Getting the best parameters and accuracy score of the best model
