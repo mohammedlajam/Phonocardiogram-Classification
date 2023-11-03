@@ -1,8 +1,34 @@
+"""
+Author: Mohammed Lajam
+
+Phase 6: Model Predictions (Computer Vision - Pre-trained Model: "Inception-ResNet"):
+/data/models/tabular_svm
+- In this python file, the tabular data is imported from the '/data/models/cv_inception_resnet/' directory.
+
+Objective:
+- predicting and evaluating Support Vector Machine Classifier Model and save the
+best model with respect to Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity,
+ROC_AUC Score and other evaluation matrices.
+
+Input:
+- The input data is the model, which is saved during phase 5.
+- 6 Models are imported for 6 folds.
+
+Output:
+- The outputs are Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity, ROC_AUC Score
+and other evaluation matrices, which are saved in 'mlruns' in the same directory. Additionally,
+all the Artifacts, parameters and matrices are tracked using MLFlow.
+
+Note:
+- All the functions and variables, which are used in this file, are imported from helpers.py
+file from the 'models' package in the same repository.
+"""
+
 import os
 import time
 import seaborn as sns
 import constants as c
-from models_evaluation.helpers import *
+from models_predictions.helpers import *
 import pickle
 from keras.models import load_model
 import mlflow.sklearn
