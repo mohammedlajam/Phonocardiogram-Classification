@@ -383,20 +383,30 @@ def _extract_save_images(audio_signals, references, rep_type: str):
 
 if __name__ == "__main__":
     _check_create_dir()
-    '''
+
     # 1. Extract Numeric Features:
-    # 1.1. Normalization:
-    NORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='normalized', version=2)
-    NORMALIZED_FEATURES = _extract_numeric_features(audio_signals=NORMALIZED_SIGNALS)
-    NORMALIZED_FEATURES = NORMALIZED_FEATURES.join(REFERENCES)
-    _save_features(dataframe=NORMALIZED_FEATURES, csv_version=1, normalization='normalized')
-    '''
-    # 1.2. Denormalization:
-    DENORMALIZED_SIGNALS, REFERENCES = _access_signals('emd_dfilters', normalization='denormalized', version=2)
-    '''
-    DENORMALIZED_FEATURES = _extract_numeric_features(audio_signals=DENORMALIZED_SIGNALS)
-    DENORMALIZED_FEATURES = DENORMALIZED_FEATURES.join(REFERENCES)
-    _save_features(dataframe=DENORMALIZED_FEATURES, csv_version=1, normalization='denormalized')
-    '''
+    if c.FEATURE_TYPE == 'NORMALIZED_TABULAR':
+        # 1.1. Normalized Tabular Data:
+        NORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='normalized', version=2)
+        NORMALIZED_FEATURES = _extract_numeric_features(audio_signals=NORMALIZED_SIGNALS)
+        NORMALIZED_FEATURES = NORMALIZED_FEATURES.join(REFERENCES)
+        _save_features(dataframe=NORMALIZED_FEATURES, csv_version=1, normalization='normalized')
+
+    elif c.FEATURE_TYPE == 'DENORMALIZED_TABULAR':
+        # 1.2. Denormalized Tabular Data:
+        DENORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='denormalized', version=2)
+
+        DENORMALIZED_FEATURES = _extract_numeric_features(audio_signals=DENORMALIZED_SIGNALS)
+        DENORMALIZED_FEATURES = DENORMALIZED_FEATURES.join(REFERENCES)
+        _save_features(dataframe=DENORMALIZED_FEATURES, csv_version=1, normalization='denormalized')
+
     # 2. Extract Images:
-    _extract_save_images(audio_signals=DENORMALIZED_SIGNALS, references=REFERENCES, rep_type='spectrogram')
+    elif c.FEATURE_TYPE == 'NORMALIZED_IMAGES':
+        # 2.1. Extract Normalized Images:
+        NORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='normalized', version=2)
+        _extract_save_images(audio_signals=NORMALIZED_SIGNALS, references=REFERENCES, rep_type='spectrogram')
+
+    elif c.FEATURE_TYPE == 'DENORMALIZED_IMAGES':
+        # 2.2. Extract Denormalized Images:
+        DENORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='normalized', version=2)
+        _extract_save_images(audio_signals=DENORMALIZED_SIGNALS, references=REFERENCES, rep_type='spectrogram')
