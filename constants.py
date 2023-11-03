@@ -8,6 +8,7 @@ PROCESSED_DATA_PATH = f'{REPO_PATH}/data/processed_data'
 IMAGES_PATH = f'{FEATURE_EXTRACTION_PATH}/images'
 
 # 2. Signal-preprocessing variables:
+NORMALIZE_SIGNAL = False
 SAMPLING_RATE = 1000
 N_IMF = 1
 LOW_FC = 100
@@ -18,6 +19,7 @@ FILTER_ORDER = 8
 PERIOD = 5
 
 # 4. Feature Extraction variables:
+FEATURE_TYPE = 'NORMALIZED'  # 'NORMALIZED_TABULAR', 'DENORMALIZED_TABULAR', 'NORMALIZED_IMAGES' or DENORMALIZED_IMAGES
 FRAME_SIZE = 512
 HOP_SIZE = 64
 SPLIT_FREQUENCY = 256
@@ -156,7 +158,7 @@ TB_TABNET_WEIGHT_DECAY = 0.001  # (HP-Tuning: 0.0) => best at 0.001
 TB_TABNET_MASK_TYPE = 'sparsemax'  # (HP-Tuning: 'entmax') => best at 'sparsemax' (sparsemax, entmax, softmax)
 
 # Model Hyper-Parameters for fitting the TabNet Model:
-TB_TABNET_EPOCHS = 150  # best at 150
+TB_TABNET_EPOCHS = 300  # best at 150
 TB_TABNET_PATIENCE = 20
 TB_TABNET_BATCH_SIZE = 32  # best at 32
 
