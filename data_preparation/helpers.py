@@ -136,6 +136,14 @@ class FeatureEngineeringTabular:
         y = fold['class']
         return x, y
 
+    def create_dataframe_from_indices2(self, indices_list, index):
+        """Function to return a DataFrame for x and y based on the Indices generated from Cross Validation."""
+        fold = self.dataset.loc[indices_list[index]]
+        fold = fold.reset_index(drop=True)
+        x = fold.drop(['signal_id', 'class'], axis=1, inplace=False)
+        y = fold[['signal_id', 'class']]
+        return x, y
+
     def apply_gaussian_transformation(self, feature, trans_method: str):
         """Function to apply Gaussian Transformation. trans_method is either 'log', 'reciprocal',
         'square_root', 'cube_root', 'exponential' or 'boxcox' """

@@ -1,23 +1,22 @@
 """
 Author: Mohammed Lajam
-
+/data/processed_data/tabular/selected_features
 Phase 5: Classification (Tabular Data - TabNet):
-- In this python file, the audio data is imported from the '/data/cross_validation/selected_features/'
+- In this python file, the tabular data is imported from the '/data/processed_data/tabular/selected_features/'
 directory.
-- After denoising the signals, Slicing the signals takes place to a specific length, so that all
-signals are equal in length and therefore the number of samples per signals are equal.
 
 Objective:
-- Building, predicting, evaluating and tuning TabNet Classifier Model and save the best model
-with respect to Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity and ROC_AUC Score.
+- Building, predicting, evaluating and tuning Support Vector Machine Classifier Model and save the
+best model with respect to Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity,
+ROC_AUC Score and other evaluation matrices.
 
 Input:
 - The input data is the 6 Folds of X_TRAIN, X_TEST, Y_TRAIN, Y_TEST.
 
 Output:
-- The outputs are Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity and
-ROC_AUC Score saved in 'mlruns' in the same directory. Additionally, all the Artifacts, parameters
-and matrices are tracked using MLFlow.
+- The outputs are Accuracy, Precision, Recall, F1-Score, Sensitivity, Specificity, ROC_AUC Score
+and other evaluation matrices, which are saved in 'mlruns' in the same directory. Additionally,
+all the Artifacts, parameters and matrices are tracked using MLFlow.
 
 Note:
 - In 'constants.py', 'CROSS_VALIDATION' path has to be adjusted before running this file.

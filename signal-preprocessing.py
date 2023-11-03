@@ -181,68 +181,70 @@ if __name__ == "__main__":
     _check_create_dir()
     AUDIO_FILES, REFERENCES = _create_signal_paths()
 
-    # 1. Normalization:
-    # 1.1. Extracting the Original Signals:
-    NORMALIZED_ORIGINAL_SIGNALS = _extract_signals(audio_files=AUDIO_FILES,
-                                                   normalization=True)
+    if c.NORMALIZE_SIGNAL:
+        # 1. Normalization:
+        # 1.1. Extracting the Original Signals:
+        NORMALIZED_ORIGINAL_SIGNALS = _extract_signals(audio_files=AUDIO_FILES,
+                                                       normalization=True)
 
-    # 1.2. Denoising:
-    NORMALIZED_DFILTERS_SIGNALS = _denoise_signals(audio_signals=NORMALIZED_ORIGINAL_SIGNALS,
-                                                   denoise_method='digital_filters')
+        # 1.2. Denoising:
+        NORMALIZED_DFILTERS_SIGNALS = _denoise_signals(audio_signals=NORMALIZED_ORIGINAL_SIGNALS,
+                                                       denoise_method='digital_filters')
 
-    # 1.3. Create DataFrames and References:
-    NORMALIZED_ORIGINAL_SIGNALS = pd.DataFrame(NORMALIZED_ORIGINAL_SIGNALS)
-    NORMALIZED_ORIGINAL_SIGNALS = NORMALIZED_ORIGINAL_SIGNALS.join(REFERENCES)
+        # 1.3. Create DataFrames and References:
+        NORMALIZED_ORIGINAL_SIGNALS = pd.DataFrame(NORMALIZED_ORIGINAL_SIGNALS)
+        NORMALIZED_ORIGINAL_SIGNALS = NORMALIZED_ORIGINAL_SIGNALS.join(REFERENCES)
 
-    NORMALIZED_DFILTERS_SIGNALS = pd.DataFrame(NORMALIZED_DFILTERS_SIGNALS)
-    NORMALIZED_DFILTERS_SIGNALS = NORMALIZED_DFILTERS_SIGNALS.join(REFERENCES)
+        NORMALIZED_DFILTERS_SIGNALS = pd.DataFrame(NORMALIZED_DFILTERS_SIGNALS)
+        NORMALIZED_DFILTERS_SIGNALS = NORMALIZED_DFILTERS_SIGNALS.join(REFERENCES)
 
-    # 1.4. Slicing DataFrames:
-    SLICED_NORMALIZED_DFILTERS_SIGNALS = _slice_signals(audio_signals=NORMALIZED_DFILTERS_SIGNALS,
-                                                        references=REFERENCES,
-                                                        sr=c.SAMPLING_RATE,
-                                                        period=c.PERIOD)
+        # 1.4. Slicing DataFrames:
+        SLICED_NORMALIZED_DFILTERS_SIGNALS = _slice_signals(audio_signals=NORMALIZED_DFILTERS_SIGNALS,
+                                                            references=REFERENCES,
+                                                            sr=c.SAMPLING_RATE,
+                                                            period=c.PERIOD)
 
-    # 1.5. Saving Signals:
-    _save_dataframe(dataframe=NORMALIZED_ORIGINAL_SIGNALS,
-                    normalization='normalized',
-                    denoise_method='original_signals',
-                    csv_version=1)
+        # 1.5. Saving Signals:
+        _save_dataframe(dataframe=NORMALIZED_ORIGINAL_SIGNALS,
+                        normalization='normalized',
+                        denoise_method='original_signals',
+                        csv_version=1)
 
-    _save_dataframe(dataframe=SLICED_NORMALIZED_DFILTERS_SIGNALS,
-                    normalization='normalized',
-                    denoise_method='digital_filters',
-                    csv_version=1)
+        _save_dataframe(dataframe=SLICED_NORMALIZED_DFILTERS_SIGNALS,
+                        normalization='normalized',
+                        denoise_method='digital_filters',
+                        csv_version=1)
 
-    # 2. Denormalization:
-    DENORMALIZED_ORIGINAL_SIGNALS = _extract_signals(audio_files=AUDIO_FILES,
-                                                     normalization=False)
+    else:
+        # 2. Denormalization:
+        DENORMALIZED_ORIGINAL_SIGNALS = _extract_signals(audio_files=AUDIO_FILES,
+                                                         normalization=False)
 
-    # 2.2. Denoising:
-    DENORMALIZED_DFILTERS_SIGNALS = _denoise_signals(audio_signals=DENORMALIZED_ORIGINAL_SIGNALS,
-                                                     denoise_method='digital_filters')
+        # 2.2. Denoising:
+        DENORMALIZED_DFILTERS_SIGNALS = _denoise_signals(audio_signals=DENORMALIZED_ORIGINAL_SIGNALS,
+                                                         denoise_method='digital_filters')
 
-    # 2.3. Create DataFrames and References:
-    DENORMALIZED_ORIGINAL_SIGNALS = pd.DataFrame(DENORMALIZED_ORIGINAL_SIGNALS)
-    DENORMALIZED_ORIGINAL_SIGNALS = DENORMALIZED_ORIGINAL_SIGNALS.join(REFERENCES)
+        # 2.3. Create DataFrames and References:
+        DENORMALIZED_ORIGINAL_SIGNALS = pd.DataFrame(DENORMALIZED_ORIGINAL_SIGNALS)
+        DENORMALIZED_ORIGINAL_SIGNALS = DENORMALIZED_ORIGINAL_SIGNALS.join(REFERENCES)
 
-    DENORMALIZED_DFILTERS_SIGNALS = pd.DataFrame(DENORMALIZED_DFILTERS_SIGNALS)
-    DENORMALIZED_DFILTERS_SIGNALS = DENORMALIZED_DFILTERS_SIGNALS.join(REFERENCES)
+        DENORMALIZED_DFILTERS_SIGNALS = pd.DataFrame(DENORMALIZED_DFILTERS_SIGNALS)
+        DENORMALIZED_DFILTERS_SIGNALS = DENORMALIZED_DFILTERS_SIGNALS.join(REFERENCES)
 
-    # 2.4. Slicing Signals:
-    SLICED_DENORMALIZED_DFILTERS_SIGNALS = _slice_signals(audio_signals=DENORMALIZED_DFILTERS_SIGNALS,
-                                                          references=REFERENCES,
-                                                          sr=c.SAMPLING_RATE,
-                                                          period=c.PERIOD)
+        # 2.4. Slicing Signals:
+        SLICED_DENORMALIZED_DFILTERS_SIGNALS = _slice_signals(audio_signals=DENORMALIZED_DFILTERS_SIGNALS,
+                                                              references=REFERENCES,
+                                                              sr=c.SAMPLING_RATE,
+                                                              period=c.PERIOD)
 
-    # 2.5. Saving DataFrames:
+        # 2.5. Saving DataFrames:
 
-    _save_dataframe(dataframe=DENORMALIZED_ORIGINAL_SIGNALS,
-                    normalization='denormalized',
-                    denoise_method='original_signals',
-                    csv_version=1)
+        _save_dataframe(dataframe=DENORMALIZED_ORIGINAL_SIGNALS,
+                        normalization='denormalized',
+                        denoise_method='original_signals',
+                        csv_version=1)
 
-    _save_dataframe(dataframe=SLICED_DENORMALIZED_DFILTERS_SIGNALS,
-                    normalization='denormalized',
-                    denoise_method='digital_filters',
-                    csv_version=1)
+        _save_dataframe(dataframe=SLICED_DENORMALIZED_DFILTERS_SIGNALS,
+                        normalization='denormalized',
+                        denoise_method='digital_filters',
+                        csv_version=1)

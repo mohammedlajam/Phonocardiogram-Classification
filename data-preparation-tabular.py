@@ -51,7 +51,7 @@ def _load_extracted_features(normalization: str):
     if normalization not in ['normalized', 'denormalized']:
         raise ValueError("'normalization is with 'normalized' or 'denormalized'.")
     else:
-        list_of_versions = glob(f'{c.FEATURE_EXTRACTION_PATH}/csv/{normalization}/*.csv')
+        list_of_versions = glob(f'{c.FEATURE_EXTRACTION_PATH}/tabular/{normalization}/*.csv')
         latest_version = max(list_of_versions, key=os.path.getctime)
         extracted_features = pd.read_csv(latest_version)
     return extracted_features

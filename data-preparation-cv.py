@@ -15,12 +15,10 @@ Input:
 - The input is the images, which are saved in 'data/extracted_features/images' directory.
 
 Output:
-- The Output is either a Holdout-Cross Validation or Fold Cross-Validation.
+- The Output is Group Stratified 6-Fold Cross-Validation.
 - The Output is saved in a pickle files format in 'data/processed_data/images'
 
 Note:
-- EDA is not applied in this python file as it is applied in the Notebook that locates in the
-data_preparation package.
 - All the functions and variables, which are used in this file, are imported from helpers.py
 file from the data_preparation package in the same repository.
 """

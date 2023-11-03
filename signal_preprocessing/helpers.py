@@ -64,9 +64,13 @@ class SignalExploration:
             plt.plot(audio_signal[zoom_1:zoom_2], alpha=0.6)
             plt.xlim(zoom_1, zoom_2)
             plt.title(f'Zoomed Raw Audio Signal ({zoom_1} - {zoom_2})')
+            plt.xlabel('Time (Seconds)')
+            plt.ylabel('Amplitude')
         else:
             plt.plot(audio_signal[zoom_1:], alpha=0.6)
             plt.title(f'Complete Raw Audio Signal')
+            plt.xlabel('Time (Seconds)')
+            plt.ylabel('Amplitude')
         plt.show()
 
     def plot_spectrum(self, zoom_1=0, zoom_2=None):
