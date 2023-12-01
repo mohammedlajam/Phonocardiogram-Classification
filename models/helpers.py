@@ -483,7 +483,7 @@ class ModelBuilder:
                                    restore_best_weights=True,
                                    verbose=True)
 
-        # Fitting the Model:
+        # Fitting the Model:c
         history = mlp_model.fit(x_train, y_train, epochs=epochs, batch_size=batch_size, validation_data=(x_val, y_val),
                                 callbacks=[early_stop])
         return mlp_model, history
