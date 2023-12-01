@@ -408,5 +408,5 @@ if __name__ == "__main__":
 
     elif c.FEATURE_TYPE == 'DENORMALIZED_IMAGES':
         # 2.2. Extract Denormalized Images:
-        DENORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='normalized', version=2)
+        DENORMALIZED_SIGNALS, REFERENCES = _access_signals('digital_filters', normalization='denormalized', version=2)
         _extract_save_images(audio_signals=DENORMALIZED_SIGNALS, references=REFERENCES, rep_type='spectrogram')
